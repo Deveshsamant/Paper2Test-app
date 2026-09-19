@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
+import android.webkit.JsResult
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -56,6 +58,23 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
                     settings.userAgentString = settings.userAgentString + " Paper2TestApp/1.0"
+                    // Without a WebChromeClient, confirm()/alert() silently return false — the exam's
+                    // "Submit now?" prompt would never be answered and the button would look dead.
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult): Boolean {
+                            android.app.AlertDialog.Builder(c).setMessage(message)
+                                .setPositiveButton("OK") { _, _ -> result.confirm() }
+                                .setNegativeButton("Cancel") { _, _ -> result.cancel() }
+                                .setOnCancelListener { result.cancel() }.show()
+                            return true
+                        }
+                        override fun onJsAlert(view: WebView, url: String, message: String, result: JsResult): Boolean {
+                            android.app.AlertDialog.Builder(c).setMessage(message)
+                                .setPositiveButton("OK") { _, _ -> result.confirm() }
+                                .setOnCancelListener { result.confirm() }.show()
+                            return true
+                        }
+                    }
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                             val u = request.url
