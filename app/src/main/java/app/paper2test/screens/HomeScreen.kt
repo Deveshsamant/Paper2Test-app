@@ -77,6 +77,10 @@ fun HomeScreen(nav: Nav) {
                         OutlinedButton(onClick = { nav.go(Screen.Web("/#/papers", "My papers")) }, Modifier.weight(1f)) { Text("My papers") }
                         OutlinedButton(onClick = { nav.go(Screen.Bundles) }, Modifier.weight(1f)) { Text("My bundles") }
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { nav.go(Screen.Web("/#/store", "Store")) }, Modifier.weight(1f)) { Icon(Icons.Default.Storefront, null); Spacer(Modifier.width(6.dp)); Text("Store") }
+                        OutlinedButton(onClick = { nav.go(Screen.Web("/#/tests", "My tests")) }, Modifier.weight(1f)) { Text("My tests") }
+                    }
                 } }
             }
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
