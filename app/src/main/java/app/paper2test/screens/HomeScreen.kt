@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -88,7 +89,7 @@ fun HomeScreen(nav: Nav) {
                 val score = if (a.optBoolean("result_published") && !a.isNull("score")) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else "Result not published"
                 ListItem(headlineContent = { Text(a.optString("title")) }, supportingContent = { Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}") },
                     trailingContent = { Text(score, fontWeight = FontWeight.SemiBold) },
-                    modifier = Modifier.padding(0.dp).let { m -> m }, )
+                )
                 TextButton(onClick = { if (submitted) nav.go(Screen.Web("/#/results/${a.optString("code")}", "My answers")) else nav.go(Screen.Exam(a.optString("code"))) }) { Text(if (submitted) "My answers" else "Continue") }
             }
             val ts = tests
