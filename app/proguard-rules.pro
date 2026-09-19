@@ -1,0 +1,1 @@
+-keep class app.paper2test.** { *; }
