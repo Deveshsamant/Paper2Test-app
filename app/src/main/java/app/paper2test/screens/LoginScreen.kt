@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import app.paper2test.*
 import app.paper2test.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -34,8 +36,16 @@ fun LoginScreen(nav: Nav) {
         busy = true; error = null
         scope.launch {
             try {
-                val option = GetGoogleIdOption.Builder().setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID).setFilterByAuthorizedAccounts(false).setAutoSelectEnabled(false).build()
-                val result = CredentialManager.create(ctx).getCredential(ctx, GetCredentialRequest.Builder().addCredentialOption(option).build())
+                val cm = CredentialManager.create(ctx)
+                // Bottom sheet first (one tap for returning users); if Play Services has no pre-authorised account
+                // it throws NoCredentialException, so fall back to the full Sign in with Google account picker.
+                val result = try {
+                    val quick = GetGoogleIdOption.Builder().setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID).setFilterByAuthorizedAccounts(false).setAutoSelectEnabled(false).build()
+                    cm.getCredential(ctx, GetCredentialRequest.Builder().addCredentialOption(quick).build())
+                } catch (e: NoCredentialException) {
+                    val full = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID).build()
+                    cm.getCredential(ctx, GetCredentialRequest.Builder().addCredentialOption(full).build())
+                }
                 val idToken = GoogleIdTokenCredential.createFrom(result.credential.data).idToken
                 val r = app.api.post("/host/login", JSONObject().put("id_token", idToken))
                 app.session.token = r.getString("token")
@@ -43,8 +53,12 @@ fun LoginScreen(nav: Nav) {
                 app.session.userName = me.optString("name", null); app.session.username = me.optString("username", null)
                 nav.replace(Screen.Home)
             } catch (e: GetCredentialException) {
-                error = if (e.message?.contains("10") == true || e.message?.contains("Developer console", true) == true)
-                    "Google sign-in is not configured for this build yet (Android OAuth client / SHA-1)." else "Sign-in cancelled or unavailable: ${e.message}"
+                error = when {
+                    e is NoCredentialException -> "No Google account available on this device. Add one in Settings > Accounts, or join with a test code below."
+                    e.message?.contains("10") == true || e.message?.contains("Developer console", true) == true -> "Google sign-in is not configured for this build (Android OAuth client / SHA-1)."
+                    e.message?.contains("cancel", true) == true -> "Sign-in cancelled."
+                    else -> "Sign-in unavailable: ${e.message}"
+                }
             } catch (e: ApiException) { error = "Server refused the sign-in (${e.code})." }
             catch (e: Exception) { error = e.message ?: "Sign-in failed" }
             finally { busy = false }
