@@ -92,6 +92,19 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                             return true
                         }
                     }
+                    // Study material the publisher allows to download: hand the (short-lived, signed) link to Android's
+                    // download manager, which saves it to Downloads and shows progress.
+                    setDownloadListener { dlUrl, _, disposition, mime, _ ->
+                        runCatching {
+                            val name = android.webkit.URLUtil.guessFileName(dlUrl, disposition, mime)
+                            val req = android.app.DownloadManager.Request(Uri.parse(dlUrl)).setTitle(name).setMimeType(mime)
+                                .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            // Android 10+: straight into Downloads (older versions would need a storage permission).
+                            if (android.os.Build.VERSION.SDK_INT >= 29) req.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, name)
+                            (c.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).enqueue(req)
+                            android.widget.Toast.makeText(c, "Downloading $name", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                             val u = request.url

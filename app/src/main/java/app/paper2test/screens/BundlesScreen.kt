@@ -45,6 +45,11 @@ fun BundlesScreen(nav: Nav) {
                         ListItem(headlineContent = { Text(it.optString("title")) }, supportingContent = { Text("${it.optInt("question_count")} Qs · ${it.optInt("duration_sec") / 60} min · $prog") },
                             trailingContent = { TextButton(onClick = { if (capped) nav.go(Screen.Web("/#/results/${it.optString("code")}", "My answers")) else nav.go(Screen.Exam(it.optString("code"))) }) { Text(if (capped) "Answers" else if (p?.optBoolean("open") == true) "Continue" else if (p != null) "Retake" else "Start") } })
                     }
+                    // Description, what's included and the study-material PDFs live on the bundle page (read in the app).
+                    val files = b.optJSONArray("files")?.length() ?: 0
+                    OutlinedButton(onClick = { nav.go(Screen.Web("/#/store/${b.optString("slug")}", b.optString("title"))) }, Modifier.fillMaxWidth()) {
+                        Text(if (files > 0) "Details & study material ($files PDF${if (files > 1) "s" else ""})" else "Bundle details")
+                    }
                 } }
             }
         }
