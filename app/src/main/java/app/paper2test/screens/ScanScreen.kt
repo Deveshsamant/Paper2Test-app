@@ -94,6 +94,7 @@ fun ScanScreen(nav: Nav) {
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("60") }
+    var instructions by remember { mutableStateOf("") }
     var plus by remember { mutableStateOf("1") }
     var minus by remember { mutableStateOf("0.25") }
     var source by remember { mutableStateOf<Source?>(null) }
@@ -152,7 +153,7 @@ fun ScanScreen(nav: Nav) {
                 }
                 status = "Starting extraction…"
                 val marking = JSONObject().put("default", JSONObject().put("correct", plus.toDoubleOrNull() ?: 1.0).put("wrong", minus.toDoubleOrNull() ?: 0.25))
-                result = app.api.post("/papers/$id/process", JSONObject().put("auto_test", JSONObject().put("duration_min", duration.toIntOrNull() ?: 60).put("marking", marking)).put("link_now", true))
+                result = app.api.post("/papers/$id/process", JSONObject().put("auto_test", JSONObject().put("duration_min", duration.toIntOrNull() ?: 60).put("marking", marking)).put("link_now", true).apply { if (instructions.isNotBlank()) put("instructions", instructions.trim()) })
                 status = null
             } catch (e: ApiException) {
                 status = when (e.code) {
@@ -183,6 +184,8 @@ fun ScanScreen(nav: Nav) {
                     OutlinedTextField(plus, { plus = it.filter { c -> c.isDigit() || c == '.' }.take(5) }, Modifier.weight(1f), label = { Text("+ correct") }, singleLine = true)
                     OutlinedTextField(minus, { minus = it.filter { c -> c.isDigit() || c == '.' }.take(5) }, Modifier.weight(1f), label = { Text("− wrong") }, singleLine = true)
                 }
+                // Optional instructions the AI follows while reading ("only questions 1-50", "skip the Hindi part").
+                OutlinedTextField(instructions, { instructions = it.take(500) }, Modifier.fillMaxWidth(), label = { Text("Instructions for the AI (optional)") }, placeholder = { Text("e.g. Only questions 1-50 · Skip the Hindi part") }, maxLines = 3)
                 Text("Add the question paper", style = MaterialTheme.typography.titleMedium)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { openScanner() }, Modifier.weight(1f), enabled = !busy) { Text("Camera") }

@@ -122,6 +122,7 @@ fun HomeScreen(nav: Nav) {
                     Text("Host a test", fontWeight = FontWeight.SemiBold)
                     Text("Scan a question paper with the camera; the test link is ready in minutes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Button(onClick = { nav.go(Screen.Scan) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.DocumentScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan / upload a paper") }
+                    OutlinedButton(onClick = { nav.go(Screen.Web("/#/make", "Make a paper with AI")) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text("Make a paper with AI") }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { nav.go(Screen.Web("/#/papers", "My papers")) }, Modifier.weight(1f)) { Text("My papers") }
                         OutlinedButton(onClick = { nav.go(Screen.Bundles) }, Modifier.weight(1f)) { Text("My bundles") }
