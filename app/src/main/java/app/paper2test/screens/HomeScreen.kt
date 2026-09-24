@@ -37,6 +37,12 @@ fun HomeScreen(nav: Nav) {
     fun load() = scope.launch {
         try {
             user = app.api.get("/me").getJSONObject("user")
+            // New account: the website's welcome page (name, photo, exams) once; it closes itself when done or skipped.
+            if (user?.optBoolean("onboarded", true) == false && !app.session.welcomeOffered) {
+                app.session.welcomeOffered = true
+                nav.go(Screen.Web("/#/welcome", "Welcome"))
+                return@launch
+            }
             attempts = app.api.get("/me/attempts").getJSONArray("attempts").objects()
             tests = app.api.get("/tests").getJSONArray("tests").objects()
         } catch (e: ApiException) { if (e.status == 401) nav.replace(Screen.Login) else error = e.code }

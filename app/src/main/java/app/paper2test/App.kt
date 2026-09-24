@@ -27,5 +27,7 @@ class Session(ctx: Context) {
         get() = prefs.getString("username", null)
         set(v) { prefs.edit().putString("username", v).apply() }
     val signedIn get() = token != null
-    fun clear() { prefs.edit().clear().apply() }
+    /** The welcome screen (profile + exams) was offered in this app run; not offered again until the next start. */
+    var welcomeOffered = false
+    fun clear() { prefs.edit().clear().apply(); welcomeOffered = false }
 }

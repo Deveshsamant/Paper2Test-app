@@ -71,6 +71,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                             val w = (c as? android.app.Activity)?.window ?: return
                             post { if (on) w.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else w.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
                         }
+                        /** A page that is finished (e.g. the welcome steps) returns to the app's previous screen. */
+                        @JavascriptInterface
+                        fun close() { post { nav.back() } }
                     }, "P2TApp")
                     // Without a WebChromeClient, confirm()/alert() silently return false — the exam's
                     // "Submit now?" prompt would never be answered and the button would look dead.
