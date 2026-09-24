@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
+import android.view.WindowManager
+import android.webkit.JavascriptInterface
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -43,7 +45,10 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
     DisposableEffect(exam) {
         val a = ctx as? android.app.Activity
         if (exam) a?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose { a?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        onDispose {
+            a?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            a?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
     }
 
     Scaffold(topBar = {
@@ -58,6 +63,15 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
                     settings.userAgentString = settings.userAgentString + " Paper2TestApp/1.0"
+                    // The exam page calls P2TApp.secure(true) while a student is answering: no screenshots or screen
+                    // recording then (results can still be shared). It only toggles this one window flag.
+                    addJavascriptInterface(object {
+                        @JavascriptInterface
+                        fun secure(on: Boolean) {
+                            val w = (c as? android.app.Activity)?.window ?: return
+                            post { if (on) w.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else w.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+                        }
+                    }, "P2TApp")
                     // Without a WebChromeClient, confirm()/alert() silently return false — the exam's
                     // "Submit now?" prompt would never be answered and the button would look dead.
                     webChromeClient = object : WebChromeClient() {
