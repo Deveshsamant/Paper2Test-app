@@ -18,6 +18,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.sp
 import app.paper2test.ui.*
 import app.paper2test.R
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -53,6 +54,7 @@ fun HomeScreen(nav: Nav) {
     var alerts by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var instTests by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var allTaken by remember { mutableStateOf(false) }
 
     fun load() = scope.launch {
         try {
@@ -187,41 +189,45 @@ fun HomeScreen(nav: Nav) {
                     }
                 }
                 error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-                item { SectionTitle("Tests you've taken") }
+                item { SectionTitle("Tests you've taken", if ((attempts?.size ?: 0) > 5 && !allTaken) "All (${attempts?.size})" else null) { allTaken = true } }
                 val at = attempts
                 if (at == null) item { Text("Loading…", color = P2T.Muted) }
                 else if (at.isEmpty()) item { P2TCard { Text("Nothing yet. Enter a code or scan a QR above.", color = P2T.Muted) } }
-                else items(at) { a ->
+                else items(if (allTaken) at else at.take(5)) { a ->
                     val submitted = !a.isNull("submitted_at")
                     val published = a.optBoolean("result_published") && !a.isNull("score")
-                    val status = if (published) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else when (a.optString("result_wait")) { "after_end" -> "After the test closes"; "host" -> "Not published yet"; else -> if (a.optBoolean("result_hidden")) "Marks hidden" else "Result not published" }
-                    P2TCard {
-                        Row(verticalAlignment = Alignment.Top) {
+                    val status = if (published) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else when (a.optString("result_wait")) { "after_end" -> "After it closes"; "host" -> "Not published"; else -> if (a.optBoolean("result_hidden")) "Marks hidden" else "Not published" }
+                    P2TCard(padding = 14.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(a.optString("title"), style = MaterialTheme.typography.titleMedium)
-                                Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
+                                Text(a.optString("title"), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}", style = MaterialTheme.typography.bodySmall, color = P2T.Muted, maxLines = 1)
+                                Spacer(Modifier.height(6.dp))
+                                if (published) Pill(status, Color(0xFFECFDF5), P2T.OkInk) else if (!submitted) Pill(status, Color(0xFFFFFBEB), Color(0xFF92400E)) else Pill(status, Color(0xFFF1F5F9), P2T.Ink2)
                             }
                             Spacer(Modifier.width(8.dp))
-                            if (published) Pill(status, Color(0xFFECFDF5), P2T.OkInk) else if (!submitted) Pill(status, Color(0xFFFFFBEB), Color(0xFF92400E)) else Pill(status, Color(0xFFF1F5F9), P2T.Ink2)
+                            if (submitted) FilledTonalButton(onClick = { nav.go(Screen.Web("/#/results/${a.optString("code")}", "My answers")) }, shape = RoundedCornerShape(12.dp)) { Text("Answers") }
+                            else Button(onClick = { nav.go(Screen.Exam(a.optString("code"))) }, shape = RoundedCornerShape(12.dp)) { Text("Continue") }
                         }
-                        if (submitted) OutlinedButton(onClick = { nav.go(Screen.Web("/#/results/${a.optString("code")}", "My answers")) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("My answers") }
-                        else Button(onClick = { nav.go(Screen.Exam(a.optString("code"))) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Continue test") }
                     }
                 }
                 val ts = tests
                 if (!ts.isNullOrEmpty()) {
                     item { SectionTitle("Tests you host", "All") { nav.go(Screen.Web("/#/tests", "My tests")) } }
-                    items(ts) { t ->
-                        P2TCard(Modifier.clickable { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) {
+                    items(ts.take(5)) { t ->
+                        P2TCard(Modifier.clickable { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }, padding = 14.dp) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(t.optString("title"), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                                val st = t.optString("status")
-                                Pill(st, if (st == "live") Color(0xFFECFDF5) else Color(0xFFF1F5F9), if (st == "live") P2T.OkInk else P2T.Ink2)
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatTile(t.optString("code"), "Code", Modifier.weight(1f), P2T.Brand)
-                                StatTile("${t.optInt("attempt_count")}", "Joined", Modifier.weight(1f))
-                                StatTile("${t.optInt("submitted_count")}", "Submitted", Modifier.weight(1f))
+                                Column(Modifier.weight(1f)) {
+                                    Text(t.optString("title"), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("${t.optInt("attempt_count")} joined · ${t.optInt("submitted_count")} submitted", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
+                                    Spacer(Modifier.height(6.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Pill(t.optString("code"), P2T.Tint2, P2T.Brand)
+                                        val st = t.optString("status")
+                                        Pill(st, if (st == "live") Color(0xFFECFDF5) else Color(0xFFF1F5F9), if (st == "live") P2T.OkInk else P2T.Ink2)
+                                    }
+                                }
+                                Icon(Icons.Default.ChevronRight, null, tint = P2T.Muted)
                             }
                         }
                     }
@@ -265,6 +271,6 @@ private fun HostCard(modifier: Modifier, nav: Nav) {
 private fun HostTile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) {
     Row(modifier.clip(RoundedCornerShape(12.dp)).background(P2T.Tint).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = P2T.Brand, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
-        Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 2, lineHeight = 18.sp)
     }
 }
