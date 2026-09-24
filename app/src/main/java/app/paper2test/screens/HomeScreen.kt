@@ -32,6 +32,7 @@ fun HomeScreen(nav: Nav) {
     var attempts by remember { mutableStateOf<List<JSONObject>?>(null) }
     var tests by remember { mutableStateOf<List<JSONObject>?>(null) }
     var user by remember { mutableStateOf<JSONObject?>(null) }
+    var recs by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     fun load() = scope.launch {
@@ -45,6 +46,8 @@ fun HomeScreen(nav: Nav) {
             }
             attempts = app.api.get("/me/attempts").getJSONArray("attempts").objects()
             tests = app.api.get("/tests").getJSONArray("tests").objects()
+            // Bundles for the exams the user picked (not owned yet); nothing shown if none match or on error.
+            recs = runCatching { app.api.get("/store/recommended").getJSONArray("bundles").objects() }.getOrDefault(emptyList())
         } catch (e: ApiException) { if (e.status == 401) nav.replace(Screen.Login) else error = e.code }
         catch (e: Exception) { error = e.message }
     }
@@ -89,6 +92,16 @@ fun HomeScreen(nav: Nav) {
                     }
                 } }
             }
+            if (recs.isNotEmpty()) {
+                item { Text("Recommended for your exams", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) }
+                items(recs) { b ->
+                    val paise = b.optInt("price_paise")
+                    val price = if (paise == 0) "Free" else "₹" + (if (paise % 100 == 0) (paise / 100).toString() else String.format(java.util.Locale.US, "%.2f", paise / 100.0))
+                    ListItem(headlineContent = { Text(b.optString("title")) },
+                        supportingContent = { Text(listOfNotNull(b.optString("exam").takeIf { it.isNotBlank() && it != "null" }, "${b.optInt("item_count")} tests").joinToString(" · ")) },
+                        trailingContent = { TextButton(onClick = { nav.go(Screen.Web("/#/store/${b.optString("slug")}", "Store")) }) { Text(price) } })
+                }
+            }
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             item { Text("Tests you've taken", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) }
             val at = attempts
@@ -96,7 +109,7 @@ fun HomeScreen(nav: Nav) {
             else if (at.isEmpty()) item { Text("Nothing yet. Enter a code or scan a QR above.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             else items(at) { a ->
                 val submitted = !a.isNull("submitted_at")
-                val score = if (a.optBoolean("result_published") && !a.isNull("score")) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else "Result not published"
+                val score = if (a.optBoolean("result_published") && !a.isNull("score")) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else when (a.optString("result_wait")) { "after_end" -> "After the test closes"; "host" -> "Not published yet"; else -> if (a.optBoolean("result_hidden")) "Marks hidden" else "Result not published" }
                 ListItem(headlineContent = { Text(a.optString("title")) }, supportingContent = { Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}") },
                     trailingContent = { Text(score, fontWeight = FontWeight.SemiBold) },
                 )
