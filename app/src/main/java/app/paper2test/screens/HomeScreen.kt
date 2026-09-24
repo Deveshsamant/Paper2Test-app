@@ -33,6 +33,7 @@ fun HomeScreen(nav: Nav) {
     var tests by remember { mutableStateOf<List<JSONObject>?>(null) }
     var user by remember { mutableStateOf<JSONObject?>(null) }
     var recs by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var alerts by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     fun load() = scope.launch {
@@ -48,6 +49,8 @@ fun HomeScreen(nav: Nav) {
             tests = app.api.get("/tests").getJSONArray("tests").objects()
             // Bundles for the exams the user picked (not owned yet); nothing shown if none match or on error.
             recs = runCatching { app.api.get("/store/recommended").getJSONArray("bundles").objects() }.getOrDefault(emptyList())
+            // Exam calendar alerts for the exams the user follows ("form closes in 3 days").
+            alerts = runCatching { app.api.get("/me/alerts").getJSONArray("alerts").objects() }.getOrDefault(emptyList())
         } catch (e: ApiException) { if (e.status == 401) nav.replace(Screen.Login) else error = e.code }
         catch (e: Exception) { error = e.message }
     }
@@ -67,6 +70,20 @@ fun HomeScreen(nav: Nav) {
                 Text("Hi, $name", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(uname?.let { "@$it" } ?: "Set a username in your profile", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (alerts.isNotEmpty()) {
+                item {
+                    Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Upcoming for your exams", fontWeight = FontWeight.SemiBold)
+                        alerts.forEach { a ->
+                            val urgent = a.optBoolean("urgent")
+                            TextButton(onClick = { nav.go(Screen.Web("/#/exams/${a.optString("exam_code")}", a.optString("exam_name"))) }, contentPadding = PaddingValues(0.dp)) {
+                                Text("${a.optString("title")}: ${a.optString("text")}", color = if (urgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    } }
+                }
+            }
+            item { TextButton(onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }) { Text("Exams & dates →") } }
             item {
                 Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Join a test", fontWeight = FontWeight.SemiBold)
