@@ -39,7 +39,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 private const val MAX_PX = 2000
-private const val PAGE_LIMIT = 60
+private const val PAGE_LIMIT = 80
 
 /** Where the pages come from. Images are uploaded in the order picked; a PDF is rendered page by page on the phone. */
 private sealed class Source {
@@ -94,6 +94,8 @@ fun ScanScreen(nav: Nav) {
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("60") }
+    var plus by remember { mutableStateOf("1") }
+    var minus by remember { mutableStateOf("0.25") }
     var source by remember { mutableStateOf<Source?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var progress by remember { mutableStateOf(0f) }
@@ -149,10 +151,15 @@ fun ScanScreen(nav: Nav) {
                     }
                 }
                 status = "Starting extraction…"
-                result = app.api.post("/papers/$id/process", JSONObject().put("auto_test", JSONObject().put("duration_min", duration.toIntOrNull() ?: 60)).put("link_now", true))
+                val marking = JSONObject().put("default", JSONObject().put("correct", plus.toDoubleOrNull() ?: 1.0).put("wrong", minus.toDoubleOrNull() ?: 0.25))
+                result = app.api.post("/papers/$id/process", JSONObject().put("auto_test", JSONObject().put("duration_min", duration.toIntOrNull() ?: 60).put("marking", marking)).put("link_now", true))
                 status = null
             } catch (e: ApiException) {
-                status = if (e.code == "plan_limit") "Failed: your plan's paper limit is used up — open Pricing on the website to buy a pack." else "Failed: ${e.code}"
+                status = when (e.code) {
+                    "plan_limit" -> "Failed: your plan's paper limit is used up — open Pricing on the website to buy a pack or plan."
+                    "page_limit" -> "Failed: this paper has more pages than your plan allows (max ${e.body.optInt("max")}; paid plans allow 80)."
+                    else -> "Failed: ${e.code}"
+                }
             } catch (e: Exception) { status = "Failed: ${e.message}" }
             finally { busy = false }
         }
@@ -171,7 +178,11 @@ fun ScanScreen(nav: Nav) {
                 OutlinedButton(onClick = { nav.replace(Screen.Home); nav.go(Screen.Web("/#/paper/$paperId", "Paper")) }, Modifier.fillMaxWidth()) { Text("Review the paper / add answer key") }
             } else {
                 OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("Paper title") }, placeholder = { Text("e.g. SSC CGL 2023 Tier-1 Shift 2") }, singleLine = true)
-                OutlinedTextField(duration, { duration = it.filter { c -> c.isDigit() }.take(3) }, Modifier.width(200.dp), label = { Text("Test duration (min)") }, singleLine = true)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(duration, { duration = it.filter { c -> c.isDigit() }.take(3) }, Modifier.weight(1.2f), label = { Text("Minutes") }, singleLine = true)
+                    OutlinedTextField(plus, { plus = it.filter { c -> c.isDigit() || c == '.' }.take(5) }, Modifier.weight(1f), label = { Text("+ correct") }, singleLine = true)
+                    OutlinedTextField(minus, { minus = it.filter { c -> c.isDigit() || c == '.' }.take(5) }, Modifier.weight(1f), label = { Text("− wrong") }, singleLine = true)
+                }
                 Text("Add the question paper", style = MaterialTheme.typography.titleMedium)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { openScanner() }, Modifier.weight(1f), enabled = !busy) { Text("Camera") }
