@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".App"
@@ -27,6 +28,12 @@
                 <data android:scheme="https" android:host="paper2test.app" android:pathPrefix="/t/" />
             </intent-filter>
         </activity>
+        <!-- Push notifications (Firebase Cloud Messaging) -->
+        <service android:name=".PushService" android:exported="false">
+            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
+        </service>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="general" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />
         <!-- ML Kit document scanner module is downloaded on demand by Play services -->
         <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="document_scanner" />
     </application>

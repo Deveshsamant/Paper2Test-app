@@ -26,11 +26,13 @@ sealed class Screen {
 
 class MainActivity : ComponentActivity() {
     private val pendingCode = mutableStateOf<String?>(null)
+    private val pendingUrl = mutableStateOf<String?>(null) // tapped notification: page to open
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         pendingCode.value = codeFromIntent(intent)
+        pendingUrl.value = intent?.getStringExtra("url")
         setContent {
             val app = App.of(this)
             var stack by remember { mutableStateOf<List<Screen>>(listOf(if (app.session.signedIn) Screen.Home else Screen.Login)) }
@@ -41,6 +43,14 @@ class MainActivity : ComponentActivity() {
             } }
             // A shared link (or QR opened by the camera app) lands straight in the exam room.
             LaunchedEffect(pendingCode.value) { pendingCode.value?.let { nav.go(Screen.Exam(it)); pendingCode.value = null } }
+            // A tapped notification opens its page (a test link goes to the exam room).
+            LaunchedEffect(pendingUrl.value) {
+                val u = pendingUrl.value ?: return@LaunchedEffect
+                pendingUrl.value = null
+                if (!app.session.signedIn || u == "/") return@LaunchedEffect
+                val code = Regex("^/t/([A-Za-z0-9]{4,10})").find(u)?.groupValues?.get(1)
+                nav.go(if (code != null) Screen.Exam(code.uppercase()) else Screen.Web(u, "Paper2Test"))
+            }
             BackHandler(enabled = stack.size > 1) { nav.back() }
 
             MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF1F6FEB), secondary = Color(0xFF2E9E4F))) {
@@ -58,7 +68,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); codeFromIntent(intent)?.let { pendingCode.value = it } }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        codeFromIntent(intent)?.let { pendingCode.value = it }
+        intent.getStringExtra("url")?.let { pendingUrl.value = it }
+    }
 
     private fun codeFromIntent(i: Intent?): String? = i?.data?.path?.let { Regex("^/t/([A-Za-z0-9]{4,10})").find(it)?.groupValues?.get(1)?.uppercase() }
 }

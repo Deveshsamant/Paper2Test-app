@@ -10,6 +10,7 @@ class App : Application() {
         super.onCreate()
         session = Session(this)
         api = Api(BuildConfig.SITE, session)
+        Push.createChannel(this)
     }
     companion object { fun of(ctx: Context) = ctx.applicationContext as App }
 }
@@ -26,6 +27,14 @@ class Session(ctx: Context) {
     var username: String?
         get() = prefs.getString("username", null)
         set(v) { prefs.edit().putString("username", v).apply() }
+    /** This phone's push token as registered with the server (removed there on sign-out). */
+    var pushToken: String?
+        get() = prefs.getString("push_token", null)
+        set(v) { prefs.edit().putString("push_token", v).apply() }
+    /** Android 13+ notification permission was asked once already. */
+    var notifAsked: Boolean
+        get() = prefs.getBoolean("notif_asked", false)
+        set(v) { prefs.edit().putBoolean("notif_asked", v).apply() }
     val signedIn get() = token != null
     /** The welcome screen (profile + exams) was offered in this app run; not offered again until the next start. */
     var welcomeOffered = false

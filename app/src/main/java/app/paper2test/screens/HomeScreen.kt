@@ -1,5 +1,11 @@
 package app.paper2test.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,12 +61,20 @@ fun HomeScreen(nav: Nav) {
         catch (e: Exception) { error = e.message }
     }
     LaunchedEffect(Unit) { load() }
+    // Notifications: Android 13+ asks the user once; then this phone's token goes to the server.
+    val askNotif = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { scope.launch { Push.register(ctx) } }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 && !app.session.notifAsked && ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            app.session.notifAsked = true
+            askNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else Push.register(ctx)
+    }
     val df = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Paper2Test") }, actions = {
             IconButton(onClick = { nav.go(Screen.Web("/#/settings", "Profile & settings")) }) { Icon(Icons.Default.AccountCircle, "Profile") }
-            IconButton(onClick = { app.session.clear(); nav.replace(Screen.Login) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out") }
+            IconButton(onClick = { scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out") }
         })
     }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
