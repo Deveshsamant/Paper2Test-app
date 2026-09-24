@@ -98,6 +98,10 @@ fun HomeScreen(nav: Nav) {
                 }
             }
             item { TextButton(onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }) { Text("Exams & dates →") } }
+            // Admin accounts: the full admin panel (bundles, prices, calendar, announcements, users, AI spend).
+            if (user?.optString("role") == "admin") item {
+                Button(onClick = { nav.go(Screen.Web("/admin/", "Admin")) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.AdminPanelSettings, null); Spacer(Modifier.width(8.dp)); Text("Admin panel") }
+            }
             item {
                 Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Join a test", fontWeight = FontWeight.SemiBold)
