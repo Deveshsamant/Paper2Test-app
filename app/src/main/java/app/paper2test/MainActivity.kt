@@ -27,11 +27,14 @@ sealed class Screen {
 class MainActivity : ComponentActivity() {
     private val pendingCode = mutableStateOf<String?>(null)
     private val pendingUrl = mutableStateOf<String?>(null) // tapped notification: page to open
+    private val homeRefresh = mutableIntStateOf(0) // bumped when an institute link arrives while the app is open
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         pendingCode.value = codeFromIntent(intent)
+        instituteFromIntent(intent)
+        Institutes.readInstallReferrer(this)
         pendingUrl.value = intent?.getStringExtra("url")
         setContent {
             val app = App.of(this)
@@ -57,7 +60,7 @@ class MainActivity : ComponentActivity() {
                 Surface {
                     when (val s = stack.last()) {
                         Screen.Login -> LoginScreen(nav)
-                        Screen.Home -> HomeScreen(nav)
+                        Screen.Home -> key(homeRefresh.intValue) { HomeScreen(nav) }
                         Screen.Scan -> ScanScreen(nav)
                         Screen.Bundles -> BundlesScreen(nav)
                         is Screen.Exam -> WebScreen(nav, "/t/${s.code}", "Test ${s.code}", exam = true)
@@ -71,7 +74,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         codeFromIntent(intent)?.let { pendingCode.value = it }
+        instituteFromIntent(intent)
         intent.getStringExtra("url")?.let { pendingUrl.value = it }
+    }
+
+    /** paper2test.app/i/<slug>: remember the institute; Home joins it once the person is signed in. */
+    private fun instituteFromIntent(i: Intent?) {
+        i?.data?.path?.let { Regex("^/i/([A-Za-z0-9-]{3,40})").find(it)?.groupValues?.get(1) }?.let { App.of(this).session.refInstitute = it.lowercase(); homeRefresh.intValue++ }
     }
 
     private fun codeFromIntent(i: Intent?): String? = i?.data?.path?.let { Regex("^/t/([A-Za-z0-9]{4,10})").find(it)?.groupValues?.get(1)?.uppercase() }

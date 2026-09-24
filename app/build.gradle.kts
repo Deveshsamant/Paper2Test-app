@@ -53,4 +53,6 @@ dependencies {
     // Push notifications (Firebase Cloud Messaging, free)
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging")
+    // Institute links from the Play Store (install referrer)
+    implementation("com.android.installreferrer:installreferrer:2.2")
 }

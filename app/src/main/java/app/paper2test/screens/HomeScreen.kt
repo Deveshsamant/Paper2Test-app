@@ -40,10 +40,13 @@ fun HomeScreen(nav: Nav) {
     var user by remember { mutableStateOf<JSONObject?>(null) }
     var recs by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var alerts by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var instTests by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     fun load() = scope.launch {
         try {
+            // Came through an institute's link before signing in: join it now, then read the profile.
+            Institutes.joinPending(app)
             user = app.api.get("/me").getJSONObject("user")
             // New account: the website's welcome page (name, photo, exams) once; it closes itself when done or skipped.
             if (user?.optBoolean("onboarded", true) == false && !app.session.welcomeOffered) {
@@ -57,6 +60,8 @@ fun HomeScreen(nav: Nav) {
             recs = runCatching { app.api.get("/store/recommended").getJSONArray("bundles").objects() }.getOrDefault(emptyList())
             // Exam calendar alerts for the exams the user follows ("form closes in 3 days").
             alerts = runCatching { app.api.get("/me/alerts").getJSONArray("alerts").objects() }.getOrDefault(emptyList())
+            // Tests the institute shares with its students.
+            if (user?.optJSONObject("institute") != null) instTests = runCatching { app.api.get("/me/institute/tests").getJSONArray("tests").objects() }.getOrDefault(emptyList())
         } catch (e: ApiException) { if (e.status == 401) nav.replace(Screen.Login) else error = e.code }
         catch (e: Exception) { error = e.message }
     }
@@ -72,7 +77,7 @@ fun HomeScreen(nav: Nav) {
     val df = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Paper2Test") }, actions = {
+        TopAppBar(title = { user?.optJSONObject("institute")?.let { CoBrand(it) } ?: Text("Paper2Test") }, actions = {
             IconButton(onClick = { nav.go(Screen.Web("/#/settings", "Profile & settings")) }) { Icon(Icons.Default.AccountCircle, "Profile") }
             IconButton(onClick = { scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out") }
         })
@@ -126,6 +131,28 @@ fun HomeScreen(nav: Nav) {
                         OutlinedButton(onClick = { nav.go(Screen.Web("/#/tests", "My tests")) }, Modifier.weight(1f)) { Text("My tests") }
                     }
                 } }
+            }
+            user?.optJSONObject("institute")?.let { inst ->
+                item {
+                    Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        CoBrand(inst, 40.dp)
+                        Text(if (inst.optBoolean("own")) "Tests you share with your students" else "From ${inst.optString("name")}", fontWeight = FontWeight.SemiBold)
+                        if (instTests.isEmpty()) Text(if (inst.optBoolean("own")) "Nothing shared yet. On a test's results page, turn on \"Show to my institute's students\"." else "No tests shared yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        instTests.forEach { t ->
+                            val mine = t.optString("mine")
+                            ListItem(headlineContent = { Text(t.optString("title")) }, supportingContent = { Text("${t.optInt("question_count")} Qs · ${t.optInt("duration_sec") / 60} min${if (t.optString("status") == "ended") " · ended" else ""}") },
+                                trailingContent = {
+                                    when {
+                                        inst.optBoolean("own") -> TextButton(onClick = { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) { Text("Results") }
+                                        mine == "done" -> TextButton(onClick = { nav.go(Screen.Web("/#/results/${t.optString("code")}", "My answers")) }) { Text("My answers") }
+                                        t.optString("status") == "ended" -> Text("closed", style = MaterialTheme.typography.bodySmall)
+                                        else -> TextButton(onClick = { nav.go(Screen.Exam(t.optString("code"))) }) { Text(if (mine == "writing") "Continue" else "Start") }
+                                    }
+                                })
+                        }
+                        TextButton(onClick = { nav.go(Screen.Web("/#/institute/${inst.optString("slug")}", inst.optString("name"))) }, contentPadding = PaddingValues(0.dp)) { Text("Institute page →") }
+                    } }
+                }
             }
             if (recs.isNotEmpty()) {
                 item { Text("Recommended for your exams", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) }

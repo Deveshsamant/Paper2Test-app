@@ -31,6 +31,14 @@ class Session(ctx: Context) {
     var pushToken: String?
         get() = prefs.getString("push_token", null)
         set(v) { prefs.edit().putString("push_token", v).apply() }
+    /** Institute link (paper2test.app/i/<slug>) opened before signing in: joined after sign-in. */
+    var refInstitute: String?
+        get() = prefs.getString("ref_institute", null)
+        set(v) { prefs.edit().apply { if (v == null) remove("ref_institute") else putString("ref_institute", v) }.apply() }
+    /** The Play install referrer was read (only once per install). */
+    var referrerChecked: Boolean
+        get() = prefs.getBoolean("referrer_checked", false)
+        set(v) { prefs.edit().putBoolean("referrer_checked", v).apply() }
     /** Android 13+ notification permission was asked once already. */
     var notifAsked: Boolean
         get() = prefs.getBoolean("notif_asked", false)
@@ -38,5 +46,5 @@ class Session(ctx: Context) {
     val signedIn get() = token != null
     /** The welcome screen (profile + exams) was offered in this app run; not offered again until the next start. */
     var welcomeOffered = false
-    fun clear() { prefs.edit().clear().apply(); welcomeOffered = false }
+    fun clear() { val checked = referrerChecked; prefs.edit().clear().apply(); welcomeOffered = false; referrerChecked = checked }
 }

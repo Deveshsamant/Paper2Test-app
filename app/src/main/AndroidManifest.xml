@@ -27,6 +27,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="paper2test.app" android:pathPrefix="/t/" />
             </intent-filter>
+            <!-- Institute links open in the app too: https://paper2test.app/i/INSTITUTE -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="paper2test.app" android:pathPrefix="/i/" />
+            </intent-filter>
         </activity>
         <!-- Push notifications (Firebase Cloud Messaging) -->
         <service android:name=".PushService" android:exported="false">
