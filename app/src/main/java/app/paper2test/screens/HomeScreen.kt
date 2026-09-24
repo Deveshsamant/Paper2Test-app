@@ -6,7 +6,18 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
+import app.paper2test.ui.*
+import app.paper2test.R
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -76,116 +87,184 @@ fun HomeScreen(nav: Nav) {
     }
     val df = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
 
-    Scaffold(topBar = {
-        TopAppBar(title = { user?.optJSONObject("institute")?.let { CoBrand(it) } ?: Text("Paper2Test") }, actions = {
-            IconButton(onClick = { nav.go(Screen.Web("/#/settings", "Profile & settings")) }) { Icon(Icons.Default.AccountCircle, "Profile") }
-            IconButton(onClick = { scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out") }
-        })
+    val name = user?.optString("name")?.takeIf { it.isNotBlank() && it != "null" } ?: app.session.userName ?: "there"
+    val uname = user?.optString("username")?.takeIf { it.isNotBlank() && it != "null" }
+    val inst = user?.optJSONObject("institute")
+
+    Scaffold(containerColor = P2T.Canvas, topBar = {
+        TopAppBar(colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White.copy(alpha = .92f)),
+            title = {
+                inst?.let { CoBrand(it) } ?: Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)))
+                    Spacer(Modifier.width(8.dp)); Text("Paper2Test", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                }
+            },
+            actions = {
+                IconButton(onClick = { nav.go(Screen.Web("/#/settings", "Profile & settings")) }) {
+                    Box(Modifier.size(34.dp).clip(CircleShape).background(P2T.Tint2), contentAlignment = Alignment.Center) { Text(name.take(1).uppercase(), color = P2T.Brand, fontWeight = FontWeight.Bold) }
+                }
+                IconButton(onClick = { scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out", tint = P2T.Ink2) }
+            })
+    }, bottomBar = {
+        NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+            NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") })
+            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/store", "Store")) }, icon = { Icon(Icons.Default.Storefront, null) }, label = { Text("Store") })
+            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }, icon = { Icon(Icons.Default.CalendarMonth, null) }, label = { Text("Exams") })
+            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/pricing", "Pricing")) }, icon = { Icon(Icons.Default.WorkspacePremium, null) }, label = { Text("Pricing") })
+        }
     }) { pad ->
-        LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                val name = user?.optString("name")?.takeIf { it.isNotBlank() } ?: app.session.userName ?: "there"
-                val uname = user?.optString("username")?.takeIf { it.isNotBlank() }
-                Text("Hi, $name", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(uname?.let { "@$it" } ?: "Set a username in your profile", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (alerts.isNotEmpty()) {
+        BoxWithConstraints(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val wide = maxWidth >= 720.dp // tablets: join + host side by side, lists in a centred column
+            LazyColumn(Modifier.widthIn(max = 960.dp).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
-                    Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Upcoming for your exams", fontWeight = FontWeight.SemiBold)
+                    Column(Modifier.padding(top = 4.dp)) {
+                        Text("Hi, ${name.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
+                        Text(uname?.let { "@$it" } ?: "Set a username in your profile", color = P2T.Muted, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                item {
+                    if (wide) Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
+                        JoinCard(Modifier.weight(1f), code, { code = it }, nav, scope, ctx)
+                        HostCard(Modifier.weight(1f), nav)
+                    } else Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        JoinCard(Modifier, code, { code = it }, nav, scope, ctx)
+                        HostCard(Modifier, nav)
+                    }
+                }
+                // Admin accounts: the full admin panel (bundles, prices, calendar, announcements, users, AI spend).
+                if (user?.optString("role") == "admin") item {
+                    OutlinedButton(onClick = { nav.go(Screen.Web("/admin/", "Admin")) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Default.AdminPanelSettings, null); Spacer(Modifier.width(8.dp)); Text("Admin panel") }
+                }
+                if (alerts.isNotEmpty()) item {
+                    P2TCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Event, null, tint = P2T.Brand); Spacer(Modifier.width(8.dp)); Text("Upcoming for your exams", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f)); TextButton(onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }) { Text("All") } }
                         alerts.forEach { a ->
                             val urgent = a.optBoolean("urgent")
-                            TextButton(onClick = { nav.go(Screen.Web("/#/exams/${a.optString("exam_code")}", a.optString("exam_name"))) }, contentPadding = PaddingValues(0.dp)) {
-                                Text("${a.optString("title")}: ${a.optString("text")}", color = if (urgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.fillMaxWidth())
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (urgent) Color(0xFFFEF2F2) else P2T.Tint).clickable { nav.go(Screen.Web("/#/exams/${a.optString("exam_code")}", a.optString("exam_name"))) }.padding(10.dp)) {
+                                Text("${a.optString("title")}: ${a.optString("text")}", color = if (urgent) P2T.Bad else P2T.Ink, fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                    } }
+                    }
                 }
-            }
-            item { TextButton(onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }) { Text("Exams & dates →") } }
-            // Admin accounts: the full admin panel (bundles, prices, calendar, announcements, users, AI spend).
-            if (user?.optString("role") == "admin") item {
-                Button(onClick = { nav.go(Screen.Web("/admin/", "Admin")) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.AdminPanelSettings, null); Spacer(Modifier.width(8.dp)); Text("Admin panel") }
-            }
-            item {
-                Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Join a test", fontWeight = FontWeight.SemiBold)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) }, Modifier.weight(1f), placeholder = { Text("Test code") }, singleLine = true)
-                        Button(onClick = { nav.go(Screen.Exam(code)) }, enabled = code.length >= 4) { Text("Join") }
-                    }
-                    OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth()) { Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code") }
-                } }
-            }
-            item {
-                Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Host a test", fontWeight = FontWeight.SemiBold)
-                    Text("Scan a question paper with the camera; the test link is ready in minutes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = { nav.go(Screen.Scan) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.DocumentScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan / upload a paper") }
-                    OutlinedButton(onClick = { nav.go(Screen.Web("/#/make", "Make a paper with AI")) }, Modifier.fillMaxWidth()) { Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text("Make a paper with AI") }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { nav.go(Screen.Web("/#/papers", "My papers")) }, Modifier.weight(1f)) { Text("My papers") }
-                        OutlinedButton(onClick = { nav.go(Screen.Bundles) }, Modifier.weight(1f)) { Text("My bundles") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { nav.go(Screen.Web("/#/store", "Store")) }, Modifier.weight(1f)) { Icon(Icons.Default.Storefront, null); Spacer(Modifier.width(6.dp)); Text("Store") }
-                        OutlinedButton(onClick = { nav.go(Screen.Web("/#/tests", "My tests")) }, Modifier.weight(1f)) { Text("My tests") }
-                    }
-                } }
-            }
-            user?.optJSONObject("institute")?.let { inst ->
-                item {
-                    Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CoBrand(inst, 40.dp)
-                        Text(if (inst.optBoolean("own")) "Tests you share with your students" else "From ${inst.optString("name")}", fontWeight = FontWeight.SemiBold)
-                        if (instTests.isEmpty()) Text(if (inst.optBoolean("own")) "Nothing shared yet. On a test's results page, turn on \"Show to my institute's students\"." else "No tests shared yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        instTests.forEach { t ->
-                            val mine = t.optString("mine")
-                            ListItem(headlineContent = { Text(t.optString("title")) }, supportingContent = { Text("${t.optInt("question_count")} Qs · ${t.optInt("duration_sec") / 60} min${if (t.optString("status") == "ended") " · ended" else ""}") },
-                                trailingContent = {
-                                    when {
-                                        inst.optBoolean("own") -> TextButton(onClick = { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) { Text("Results") }
-                                        mine == "done" -> TextButton(onClick = { nav.go(Screen.Web("/#/results/${t.optString("code")}", "My answers")) }) { Text("My answers") }
-                                        t.optString("status") == "ended" -> Text("closed", style = MaterialTheme.typography.bodySmall)
-                                        else -> TextButton(onClick = { nav.go(Screen.Exam(t.optString("code"))) }) { Text(if (mine == "writing") "Continue" else "Start") }
+                inst?.let { i ->
+                    item {
+                        P2TCard {
+                            CoBrand(i, 40.dp)
+                            Text(if (i.optBoolean("own")) "Tests you share with your students" else "From ${i.optString("name")}", style = MaterialTheme.typography.titleMedium)
+                            if (instTests.isEmpty()) Text(if (i.optBoolean("own")) "Nothing shared yet. On a test's results page, turn on \"Show to my institute's students\"." else "No tests shared yet.", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
+                            instTests.forEach { t ->
+                                val mine = t.optString("mine")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(t.optString("title"), fontWeight = FontWeight.SemiBold)
+                                        Text("${t.optInt("question_count")} Qs · ${t.optInt("duration_sec") / 60} min${if (t.optString("status") == "ended") " · ended" else ""}", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
                                     }
-                                })
+                                    when {
+                                        i.optBoolean("own") -> TextButton(onClick = { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) { Text("Results") }
+                                        mine == "done" -> TextButton(onClick = { nav.go(Screen.Web("/#/results/${t.optString("code")}", "My answers")) }) { Text("My answers") }
+                                        t.optString("status") == "ended" -> Pill("closed", Color(0xFFF1F5F9), P2T.Ink2)
+                                        else -> FilledTonalButton(onClick = { nav.go(Screen.Exam(t.optString("code"))) }) { Text(if (mine == "writing") "Continue" else "Start") }
+                                    }
+                                }
+                            }
+                            TextButton(onClick = { nav.go(Screen.Web("/#/institute/${i.optString("slug")}", i.optString("name"))) }, contentPadding = PaddingValues(0.dp)) { Text("Institute page →") }
                         }
-                        TextButton(onClick = { nav.go(Screen.Web("/#/institute/${inst.optString("slug")}", inst.optString("name"))) }, contentPadding = PaddingValues(0.dp)) { Text("Institute page →") }
-                    } }
+                    }
                 }
-            }
-            if (recs.isNotEmpty()) {
-                item { Text("Recommended for your exams", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) }
-                items(recs) { b ->
-                    val paise = b.optInt("price_paise")
-                    val price = if (paise == 0) "Free" else "₹" + (if (paise % 100 == 0) (paise / 100).toString() else String.format(java.util.Locale.US, "%.2f", paise / 100.0))
-                    ListItem(headlineContent = { Text(b.optString("title")) },
-                        supportingContent = { Text(listOfNotNull(b.optString("exam").takeIf { it.isNotBlank() && it != "null" }, "${b.optInt("item_count")} tests").joinToString(" · ")) },
-                        trailingContent = { TextButton(onClick = { nav.go(Screen.Web("/#/store/${b.optString("slug")}", "Store")) }) { Text(price) } })
+                if (recs.isNotEmpty()) {
+                    item { SectionTitle("Recommended for your exams", "Store") { nav.go(Screen.Web("/#/store", "Store")) } }
+                    items(recs) { b ->
+                        val paise = b.optInt("price_paise")
+                        val price = if (paise == 0) "Free" else "₹" + (if (paise % 100 == 0) (paise / 100).toString() else String.format(java.util.Locale.US, "%.2f", paise / 100.0))
+                        P2TCard(Modifier.clickable { nav.go(Screen.Web("/#/store/${b.optString("slug")}", "Store")) }) {
+                            b.optString("exam").takeIf { it.isNotBlank() && it != "null" }?.let { Pill(it) }
+                            Text(b.optString("title"), style = MaterialTheme.typography.titleMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${b.optInt("item_count")} tests", color = P2T.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                Text(price, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                            }
+                        }
+                    }
                 }
-            }
-            error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-            item { Text("Tests you've taken", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) }
-            val at = attempts
-            if (at == null) item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else if (at.isEmpty()) item { Text("Nothing yet. Enter a code or scan a QR above.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else items(at) { a ->
-                val submitted = !a.isNull("submitted_at")
-                val score = if (a.optBoolean("result_published") && !a.isNull("score")) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else when (a.optString("result_wait")) { "after_end" -> "After the test closes"; "host" -> "Not published yet"; else -> if (a.optBoolean("result_hidden")) "Marks hidden" else "Result not published" }
-                ListItem(headlineContent = { Text(a.optString("title")) }, supportingContent = { Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}") },
-                    trailingContent = { Text(score, fontWeight = FontWeight.SemiBold) },
-                )
-                TextButton(onClick = { if (submitted) nav.go(Screen.Web("/#/results/${a.optString("code")}", "My answers")) else nav.go(Screen.Exam(a.optString("code"))) }) { Text(if (submitted) "My answers" else "Continue") }
-            }
-            val ts = tests
-            if (!ts.isNullOrEmpty()) {
-                item { Text("Tests you host", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium) }
-                items(ts) { t ->
-                    ListItem(headlineContent = { Text(t.optString("title")) }, supportingContent = { Text("Code ${t.optString("code")} · ${t.optInt("submitted_count")} submitted · ${t.optString("status")}") },
-                        trailingContent = { TextButton(onClick = { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) { Text("Results") } })
+                error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+                item { SectionTitle("Tests you've taken") }
+                val at = attempts
+                if (at == null) item { Text("Loading…", color = P2T.Muted) }
+                else if (at.isEmpty()) item { P2TCard { Text("Nothing yet. Enter a code or scan a QR above.", color = P2T.Muted) } }
+                else items(at) { a ->
+                    val submitted = !a.isNull("submitted_at")
+                    val published = a.optBoolean("result_published") && !a.isNull("score")
+                    val status = if (published) "Score ${a.get("score")}" else if (!submitted) "In progress" else if (a.optBoolean("pending_key")) "Key pending" else when (a.optString("result_wait")) { "after_end" -> "After the test closes"; "host" -> "Not published yet"; else -> if (a.optBoolean("result_hidden")) "Marks hidden" else "Result not published" }
+                    P2TCard {
+                        Row(verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1f)) {
+                                Text(a.optString("title"), style = MaterialTheme.typography.titleMedium)
+                                Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            if (published) Pill(status, Color(0xFFECFDF5), P2T.OkInk) else if (!submitted) Pill(status, Color(0xFFFFFBEB), Color(0xFF92400E)) else Pill(status, Color(0xFFF1F5F9), P2T.Ink2)
+                        }
+                        if (submitted) OutlinedButton(onClick = { nav.go(Screen.Web("/#/results/${a.optString("code")}", "My answers")) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("My answers") }
+                        else Button(onClick = { nav.go(Screen.Exam(a.optString("code"))) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Continue test") }
+                    }
+                }
+                val ts = tests
+                if (!ts.isNullOrEmpty()) {
+                    item { SectionTitle("Tests you host", "All") { nav.go(Screen.Web("/#/tests", "My tests")) } }
+                    items(ts) { t ->
+                        P2TCard(Modifier.clickable { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(t.optString("title"), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                                val st = t.optString("status")
+                                Pill(st, if (st == "live") Color(0xFFECFDF5) else Color(0xFFF1F5F9), if (st == "live") P2T.OkInk else P2T.Ink2)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                StatTile(t.optString("code"), "Code", Modifier.weight(1f), P2T.Brand)
+                                StatTile("${t.optInt("attempt_count")}", "Joined", Modifier.weight(1f))
+                                StatTile("${t.optInt("submitted_count")}", "Submitted", Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun JoinCard(modifier: Modifier, code: String, onCode: (String) -> Unit, nav: Nav, scope: kotlinx.coroutines.CoroutineScope, ctx: android.content.Context) {
+    GradientCard(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Key, null, tint = Color.White); Spacer(Modifier.width(8.dp)); Text("Join a test", color = Color.White, style = MaterialTheme.typography.titleLarge) }
+        Text("Enter the code your teacher shared, or scan its QR.", color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.bodySmall)
+        CodeField(code, onCode, onGo = { nav.go(Screen.Exam(code)) }, onDark = true)
+        OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .4f))) {
+            Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code")
+        }
+    }
+}
+
+@Composable
+private fun HostCard(modifier: Modifier, nav: Nav) {
+    P2TCard(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.UploadFile, null, tint = P2T.Brand); Spacer(Modifier.width(8.dp)); Text("Host a test", style = MaterialTheme.typography.titleLarge) }
+        Text("Scan a question paper with the camera; the test link is ready in minutes.", style = MaterialTheme.typography.bodySmall, color = P2T.Ink2)
+        Button(onClick = { nav.go(Screen.Scan) }, Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Default.DocumentScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan / upload a paper") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HostTile(Icons.Default.AutoAwesome, "AI paper maker", Modifier.weight(1f)) { nav.go(Screen.Web("/#/make", "Make a paper with AI")) }
+            HostTile(Icons.Default.Description, "My papers", Modifier.weight(1f)) { nav.go(Screen.Web("/#/papers", "My papers")) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HostTile(Icons.Default.Leaderboard, "My tests", Modifier.weight(1f)) { nav.go(Screen.Web("/#/tests", "My tests")) }
+            HostTile(Icons.Default.CollectionsBookmark, "My bundles", Modifier.weight(1f)) { nav.go(Screen.Bundles) }
+        }
+    }
+}
+
+@Composable
+private fun HostTile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, modifier: Modifier, onClick: () -> Unit) {
+    Row(modifier.clip(RoundedCornerShape(12.dp)).background(P2T.Tint).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = P2T.Brand, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
+        Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
     }
 }

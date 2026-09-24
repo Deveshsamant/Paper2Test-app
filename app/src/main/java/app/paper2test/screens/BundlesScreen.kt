@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.paper2test.*
+import app.paper2test.ui.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -26,14 +27,14 @@ fun BundlesScreen(nav: Nav) {
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { scope.launch { try { val a = app.api.get("/store/mine").getJSONArray("bundles"); bundles = (0 until a.length()).map { a.getJSONObject(it) } } catch (e: Exception) { error = e.message } } }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("My bundles") }, navigationIcon = { IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }) }) { pad ->
+    Scaffold(containerColor = P2T.Canvas, topBar = { TopAppBar(title = { Text("My bundles") }, navigationIcon = { IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }) }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             val list = bundles
             if (list == null) item { Text("Loading…") }
             else if (list.isEmpty()) item { Text("You don't own any bundles yet. Browse and buy bundles on paper2test.app; they appear here for taking tests.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             else items(list) { b ->
-                Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                P2TCard {
                     Text(b.optString("title"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     val cap = if (b.isNull("max_attempts_per_test")) null else b.optInt("max_attempts_per_test")
                     Text("${b.optInt("item_count")} tests · ${cap?.let { "$it attempts per test" } ?: "unlimited attempts"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -50,7 +51,7 @@ fun BundlesScreen(nav: Nav) {
                     OutlinedButton(onClick = { nav.go(Screen.Web("/#/store/${b.optString("slug")}", b.optString("title"))) }, Modifier.fillMaxWidth()) {
                         Text(if (files > 0) "Details & study material ($files PDF${if (files > 1) "s" else ""})" else "Bundle details")
                     }
-                } }
+                }
             }
         }
     }

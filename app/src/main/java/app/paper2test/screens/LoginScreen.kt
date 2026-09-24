@@ -1,6 +1,21 @@
 package app.paper2test.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import app.paper2test.ui.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,22 +80,62 @@ fun LoginScreen(nav: Nav) {
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Image(painterResource(R.drawable.logo), null, Modifier.size(140.dp))
-        Text("Paper2Test", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text("Scan it. Share it. Score it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Signing in…" else "Continue with Google") }
-        Text("Host tests, keep your scores, buy bundles.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        Spacer(Modifier.height(32.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(16.dp))
-        Text("Just have a test code?", fontWeight = FontWeight.SemiBold)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8) }, Modifier.weight(1f), label = { Text("Test code") }, singleLine = true)
-            Button(onClick = { nav.go(Screen.Exam(code)) }, enabled = code.length >= 4) { Text("Join") }
+    Box(Modifier.fillMaxSize().background(P2T.Canvas).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
+        Column(Modifier.widthIn(max = 520.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(R.drawable.logo), null, Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)))
+                Spacer(Modifier.width(10.dp))
+                Text("Paper2Test", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+            }
+            GradientCard {
+                Eyebrow("Question paper → mock test", Color.White.copy(alpha = .85f))
+                Text("Scan it. Share it.\nScore it.", color = Color.White, style = MaterialTheme.typography.headlineLarge)
+                Text("Turn any question paper into a timed online test. Share a code; see every score and every marked answer.", color = Color.White.copy(alpha = .88f), style = MaterialTheme.typography.bodyMedium)
+            }
+            P2TCard(padding = 20.dp) {
+                Text("Welcome to Paper2Test", style = MaterialTheme.typography.titleLarge)
+                Text("Sign in to host tests, keep your scores in one place and use test bundles.", color = P2T.Ink2, style = MaterialTheme.typography.bodyMedium)
+                Button(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
+                    Text(if (busy) "Signing in…" else "Continue with Google", fontWeight = FontWeight.SemiBold)
+                    if (!busy) { Spacer(Modifier.width(8.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp)) }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Bolt, null, Modifier.size(16.dp), tint = P2T.OkInk); Spacer(Modifier.width(4.dp))
+                    Text("One tap, no password", style = MaterialTheme.typography.bodySmall, color = P2T.Ink2)
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+            P2TCard(padding = 20.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(P2T.Tint2), contentAlignment = Alignment.Center) { Icon(Icons.Default.Pin, null, tint = P2T.Brand) }
+                    Spacer(Modifier.width(12.dp))
+                    Column { Text("Have a test code?", style = MaterialTheme.typography.titleMedium); Text("Join without an account", style = MaterialTheme.typography.bodySmall, color = P2T.Muted) }
+                }
+                CodeField(code, { code = it }, onGo = { nav.go(Screen.Exam(code)) })
+                OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code")
+                }
+            }
+            Text("By continuing you agree to the Terms and Privacy Policy at paper2test.app.", style = MaterialTheme.typography.bodySmall, color = P2T.Muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         }
-        TextButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }) { Text("Scan QR code") }
+    }
+}
+
+/** The 6-letter test code box with a Join button (login + home). */
+@Composable
+fun CodeField(code: String, onChange: (String) -> Unit, onGo: () -> Unit, onDark: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextField(code, { onChange(it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8)) }, Modifier.weight(1f),
+            placeholder = { Text("TEST CODE", letterSpacing = 4.sp, fontFamily = Jakarta, fontWeight = FontWeight.Bold, color = if (onDark) Color.White.copy(alpha = .6f) else Color(0xFFA5B4D4)) },
+            textStyle = LocalTextStyle.current.copy(letterSpacing = 4.sp, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = if (onDark) Color.White else P2T.Ink),
+            singleLine = true, shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Go), keyboardActions = KeyboardActions(onGo = { if (code.length >= 4) onGo() }),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (onDark) Color.White.copy(alpha = .16f) else P2T.Tint, unfocusedContainerColor = if (onDark) Color.White.copy(alpha = .16f) else P2T.Tint,
+                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = if (onDark) Color.White else P2T.Brand))
+        Button(onClick = onGo, enabled = code.length >= 4, modifier = Modifier.height(54.dp), shape = RoundedCornerShape(14.dp),
+            colors = if (onDark) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = P2T.Brand, disabledContainerColor = Color.White.copy(alpha = .35f), disabledContentColor = Color.White) else ButtonDefaults.buttonColors()) {
+            Text("Join"); Spacer(Modifier.width(4.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
+        }
     }
 }

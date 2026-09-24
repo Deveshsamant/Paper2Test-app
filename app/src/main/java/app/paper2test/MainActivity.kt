@@ -6,12 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
+import app.paper2test.ui.P2TTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
 import app.paper2test.screens.*
 
 /** Where the user is. The app is a native shell; heavy screens open the site in a WebView with the session handed over. */
@@ -56,7 +53,7 @@ class MainActivity : ComponentActivity() {
             }
             BackHandler(enabled = stack.size > 1) { nav.back() }
 
-            MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF1F6FEB), secondary = Color(0xFF2E9E4F))) {
+            P2TTheme {
                 Surface {
                     when (val s = stack.last()) {
                         Screen.Login -> LoginScreen(nav)
