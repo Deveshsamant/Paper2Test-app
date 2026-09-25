@@ -31,21 +31,22 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 /** One test inside a bundle, with what the student can do next. */
-private data class BundleTest(val title: String, val code: String, val meta: String, val state: String, val action: String)
+private data class BundleTest(val title: String, val code: String, val meta: String, val state: String, val action: String, val section: String? = null)
 
 private fun testsOf(b: JSONObject): List<BundleTest> {
     val cap = if (b.isNull("max_attempts_per_test")) null else b.optInt("max_attempts_per_test")
     val items = b.optJSONArray("items") ?: return emptyList()
     return (0 until items.length()).map { i ->
         val it = items.getJSONObject(i); val p = it.optJSONObject("progress")
+        val sec = it.optString("section_id").takeIf { s -> s.isNotBlank() && s != "null" }
         val base = "${it.optInt("question_count")} Qs · ${it.optInt("duration_sec") / 60} min"
         val attempts = p?.optInt("attempts") ?: 0
         val best = if (p != null && !p.isNull("best")) " · best ${p.get("best")}" else ""
         when {
-            p == null -> BundleTest(it.optString("title"), it.optString("code"), "$base · not attempted", "new", "Start")
-            p.optBoolean("open") -> BundleTest(it.optString("title"), it.optString("code"), "$base · in progress", "open", "Continue")
-            cap != null && attempts >= cap -> BundleTest(it.optString("title"), it.optString("code"), "$base$best", "done", "Answers")
-            else -> BundleTest(it.optString("title"), it.optString("code"), "$base$best${cap?.let { c -> " · ${c - attempts} attempt${if (c - attempts == 1) "" else "s"} left" } ?: ""}", "done", "Retake")
+            p == null -> BundleTest(it.optString("title"), it.optString("code"), "$base · not attempted", "new", "Start", sec)
+            p.optBoolean("open") -> BundleTest(it.optString("title"), it.optString("code"), "$base · in progress", "open", "Continue", sec)
+            cap != null && attempts >= cap -> BundleTest(it.optString("title"), it.optString("code"), "$base$best", "done", "Answers", sec)
+            else -> BundleTest(it.optString("title"), it.optString("code"), "$base$best${cap?.let { c -> " · ${c - attempts} attempt${if (c - attempts == 1) "" else "s"} left" } ?: ""}", "done", "Retake", sec)
         }
     }
 }
@@ -101,9 +102,19 @@ private fun BundleCard(b: JSONObject, nav: Nav) {
             }
             LinearProgressIndicator(progress = { if (tests.isEmpty()) 0f else done.toFloat() / tests.size }, Modifier.fillMaxWidth().height(6.dp).clip(CircleShape), color = P2T.Ok, trackColor = Color(0x33FFFFFF), drawStopIndicator = {})
         }
-        val shown = if (showAll) tests else tests.take(4)
+        // Optional sections: tests without a section first, then each section under its own heading.
+        val secArr = b.optJSONArray("sections")
+        val sections = (0 until (secArr?.length() ?: 0)).map { secArr!!.getJSONObject(it) }.map { it.optString("id") to it.optString("title") }
+        val known = sections.map { it.first }.toSet()
+        val ordered = tests.filter { it.section == null || it.section !in known } + sections.flatMap { (id, _) -> tests.filter { it.section == id } }
+        val shown = if (showAll) ordered else ordered.take(4)
+        var lastSection: String? = null
         shown.forEachIndexed { i, t ->
-            if (i > 0) HorizontalDivider(color = P2T.Line)
+            val sec = t.section?.takeIf { it in known }
+            if (sec != null && sec != lastSection) {
+                Text(sections.first { it.first == sec }.second, Modifier.fillMaxWidth().background(P2T.Tint).padding(horizontal = 14.dp, vertical = 8.dp), fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = P2T.Brand)
+            } else if (i > 0) HorizontalDivider(color = P2T.Line)
+            lastSection = sec
             TestRow(t) { if (t.action == "Answers") nav.go(Screen.Web("/#/results/${t.code}", "My answers")) else nav.go(Screen.Exam(t.code)) }
         }
         if (tests.size > 4) TextButton(onClick = { showAll = !showAll }, Modifier.fillMaxWidth()) { Text(if (showAll) "Show fewer" else "+${tests.size - 4} more tests in this series") }
