@@ -40,8 +40,8 @@ import java.util.Date
 /** What each plan gives (same promises as the website's Pricing page). */
 private val FEATURES = mapOf(
     "student" to listOf("10 papers, valid for a year", "You + 5 friends per test", "Papers up to 80 pages", "Answer key later, results, answer sheets"),
-    "teacher" to listOf("20 papers every month", "200 students per test", "Papers up to 80 pages", "Excel export, no watermark"),
-    "coaching" to listOf("100 papers every month", "Unlimited students per test", "Priority reading of papers", "Your institute's name and logo"),
+    "teacher" to listOf("Papers up to 80 pages", "Excel export, no watermark", "Answer key later, results, answer sheets", "Host any test again for a new batch"),
+    "coaching" to listOf("Your institute's name and logo", "Priority reading of papers", "Papers up to 80 pages", "Rank lists and every answer sheet"),
 )
 private val PLAN_META = mapOf(
     "student" to Triple(Icons.Default.School, "Student", "For your own practice with friends"),
