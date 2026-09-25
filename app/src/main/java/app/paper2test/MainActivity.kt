@@ -36,6 +36,7 @@ sealed class Screen {
     data object Home : Screen()
     data object Scan : Screen()
     data object Bundles : Screen()
+    data object Plans : Screen()
     data class Exam(val code: String) : Screen()
     data class Web(val path: String, val title: String) : Screen()
 }
@@ -64,6 +65,8 @@ class MainActivity : ComponentActivity() {
         appUpdates = AppUpdateManagerFactory.create(this)
         appUpdates.registerListener(installListener)
         lifecycleScope.launch { checkForUpdate() }
+        // Google Play purchases our server has not seen yet (closed mid-payment, UPI confirmed later).
+        lifecycleScope.launch { if (App.of(this@MainActivity).session.signedIn) runCatching { App.of(this@MainActivity).billing.restore() } }
         setContent {
             val app = App.of(this)
             var stack by remember { mutableStateOf<List<Screen>>(listOf(if (app.session.signedIn) Screen.Home else Screen.Login)) }
@@ -93,6 +96,7 @@ class MainActivity : ComponentActivity() {
                             Screen.Home -> key(homeRefresh.intValue) { HomeScreen(nav) }
                             Screen.Scan -> ScanScreen(nav)
                             Screen.Bundles -> BundlesScreen(nav)
+                            Screen.Plans -> PlansScreen(nav)
                             is Screen.Exam -> WebScreen(nav, "/t/${s.code}", "Test ${s.code}", exam = true)
                             is Screen.Web -> WebScreen(nav, s.path, s.title)
                         }

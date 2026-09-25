@@ -1,5 +1,8 @@
 package app.paper2test
 
+import app.paper2test.ui.P2T
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
 import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -57,19 +60,22 @@ object Institutes {
 
 /** An image from the site (institute logo), loaded once. */
 @Composable
-fun RemoteImage(path: String?, size: Dp, fallback: String) {
-    val img by produceState<ImageBitmap?>(null, path) {
-        value = if (path == null) null else withContext(Dispatchers.IO) {
-            runCatching { URL(BuildConfig.SITE + path).openStream().use { BitmapFactory.decodeStream(it)?.asImageBitmap() } }.getOrNull()
-        }
+fun RemoteImage(path: String?, size: Dp, fallback: String, circle: Boolean = false) {
+    // Photo / logo URLs carry a version (/photo/<updated>.jpg), so a cached image is never stale.
+    val img by produceState(path?.let { imageCache.get(it) }, path) {
+        if (path != null && value == null) value = withContext(Dispatchers.IO) {
+            runCatching { URL(if (path.startsWith("http")) path else BuildConfig.SITE + path).openStream().use { BitmapFactory.decodeStream(it)?.asImageBitmap() } }.getOrNull()
+        }?.also { imageCache.put(path, it) }
     }
-    val shape = RoundedCornerShape(size / 4)
+    val shape = if (circle) CircleShape else RoundedCornerShape(size / 4)
     val i = img
     if (i != null) Image(i, null, Modifier.size(size).clip(shape), contentScale = ContentScale.Crop)
-    else Box(Modifier.size(size).clip(shape), contentAlignment = Alignment.Center) {
+    else Box(Modifier.size(size).clip(shape).background(P2T.Tint2), contentAlignment = Alignment.Center) {
         Text(fallback.take(1).uppercase(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
     }
 }
+
+private val imageCache = android.util.LruCache<String, ImageBitmap>(40)
 
 /** "Paper2Test × Sharma Classes" with the institute's logo. */
 @Composable

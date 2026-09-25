@@ -105,7 +105,7 @@ fun HomeScreen(nav: Nav) {
             },
             actions = {
                 IconButton(onClick = { nav.go(Screen.Web("/#/settings", "Profile & settings")) }) {
-                    Box(Modifier.size(34.dp).clip(CircleShape).background(P2T.Tint2), contentAlignment = Alignment.Center) { Text(name.take(1).uppercase(), color = P2T.Brand, fontWeight = FontWeight.Bold) }
+                    RemoteImage(user?.optString("avatar_url")?.takeIf { it.isNotBlank() && it != "null" }, 34.dp, name, circle = true)
                 }
                 IconButton(onClick = { scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out", tint = P2T.Ink2) }
             })
@@ -114,7 +114,7 @@ fun HomeScreen(nav: Nav) {
             NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") })
             NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/store", "Store")) }, icon = { Icon(Icons.Default.Storefront, null) }, label = { Text("Store") })
             NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }, icon = { Icon(Icons.Default.CalendarMonth, null) }, label = { Text("Exams") })
-            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/pricing", "Pricing")) }, icon = { Icon(Icons.Default.WorkspacePremium, null) }, label = { Text("Pricing") })
+            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Plans) }, icon = { Icon(Icons.Default.WorkspacePremium, null) }, label = { Text("Plans") })
         }
     }) { pad ->
         BoxWithConstraints(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.TopCenter) {

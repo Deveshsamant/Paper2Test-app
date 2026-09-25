@@ -6,6 +6,8 @@ import android.content.Context
 class App : Application() {
     lateinit var session: Session
     lateinit var api: Api
+    /** Google Play Billing (plans and paper packs), connected on first use. */
+    val billing by lazy { PlayBilling(this, this) }
     override fun onCreate() {
         super.onCreate()
         session = Session(this)

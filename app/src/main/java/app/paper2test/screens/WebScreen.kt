@@ -74,6 +74,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                         /** A page that is finished (e.g. the welcome steps) returns to the app's previous screen. */
                         @JavascriptInterface
                         fun close() { post { nav.back() } }
+                        /** The site's Pricing page inside the app: the native Plans screen (Google Play Billing). */
+                        @JavascriptInterface
+                        fun openPlans() { post { nav.go(Screen.Plans) } }
                     }, "P2TApp")
                     // Without a WebChromeClient, confirm()/alert() silently return false — the exam's
                     // "Submit now?" prompt would never be answered and the button would look dead.

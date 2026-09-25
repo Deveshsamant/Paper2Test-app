@@ -172,7 +172,7 @@ fun ScanScreen(nav: Nav) {
                 status = null
             } catch (e: ApiException) {
                 status = when (e.code) {
-                    "plan_limit" -> "Failed: your plan's paper limit is used up — open Pricing on the website to buy a pack or plan."
+                    "plan_limit" -> "Failed: your plan's paper limit is used up."
                     "page_limit" -> "Failed: this paper has more pages than your plan allows (max ${e.body.optInt("max")}; paid plans allow 80)."
                     else -> "Failed: ${e.code}"
                 }
@@ -189,6 +189,7 @@ fun ScanScreen(nav: Nav) {
             if (test == null) Surface(color = UiColor.White, shadowElevation = 12.dp) {
                 Column(Modifier.navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     status?.let { Text(it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (it.startsWith("Failed") || it.startsWith("Scanner")) MaterialTheme.colorScheme.error else P2T.Ink2) }
+                    if (status?.contains("limit is used up") == true || status?.contains("more pages than your plan") == true) OutlinedButton(onClick = { nav.go(Screen.Plans) }, Modifier.fillMaxWidth()) { Text("See plans & paper packs") }
                     if (busy) LinearProgressIndicator(progress = { progress }, Modifier.fillMaxWidth().height(6.dp).clip(CircleShape), color = P2T.Indigo, trackColor = P2T.Tint2, drawStopIndicator = {})
                     Button(onClick = { upload() }, Modifier.fillMaxWidth().height(52.dp), enabled = source != null && !busy, shape = RoundedCornerShape(14.dp)) {
                         Icon(Icons.Default.UploadFile, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(if (busy) "Uploading…" else "Upload & create test link", fontSize = 16.sp)
