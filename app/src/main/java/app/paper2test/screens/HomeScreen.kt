@@ -148,11 +148,27 @@ fun HomeScreen(nav: Nav) {
                 }
             })
     }, bottomBar = {
+        // Tabs follow the space: running an institute, studying at one, or the personal Paper2Test.
         NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
             NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") })
-            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/store", "Store")) }, icon = { Icon(Icons.Default.Storefront, null) }, label = { Text("Store") })
-            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }, icon = { Icon(Icons.Default.CalendarMonth, null) }, label = { Text("Exams") })
-            NavigationBarItem(selected = false, onClick = { nav.go(Screen.Plans) }, icon = { Icon(Icons.Default.WorkspacePremium, null) }, label = { Text("Plans") })
+            when (kind) {
+                "institute" -> {
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/batches", "Batches")) }, icon = { Icon(Icons.Default.Groups, null) }, label = { Text("Batches") })
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/tests", "Tests")) }, icon = { Icon(Icons.Default.Quiz, null) }, label = { Text("Tests") })
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/students", "Students")) }, icon = { Icon(Icons.Default.School, null) }, label = { Text("Students") })
+                    if (current?.optString("role") == "Owner") NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/staff", "Staff")) }, icon = { Icon(Icons.Default.Badge, null) }, label = { Text("Staff") })
+                }
+                "student" -> {
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/mybatches", "My batches")) }, icon = { Icon(Icons.Default.Groups, null) }, label = { Text("Batches") })
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/itests", "Tests")) }, icon = { Icon(Icons.Default.Quiz, null) }, label = { Text("Tests") })
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/iresults", "Results")) }, icon = { Icon(Icons.Default.Insights, null) }, label = { Text("Results") })
+                }
+                else -> {
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/store", "Store")) }, icon = { Icon(Icons.Default.Storefront, null) }, label = { Text("Store") })
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }, icon = { Icon(Icons.Default.CalendarMonth, null) }, label = { Text("Exams") })
+                    NavigationBarItem(selected = false, onClick = { nav.go(Screen.Plans) }, icon = { Icon(Icons.Default.WorkspacePremium, null) }, label = { Text("Plans") })
+                }
+            }
         }
     }) { pad ->
         BoxWithConstraints(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -178,7 +194,7 @@ fun HomeScreen(nav: Nav) {
                 if (user?.optString("role") == "admin") item {
                     OutlinedButton(onClick = { nav.go(Screen.Web("/admin/", "Admin")) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Default.AdminPanelSettings, null); Spacer(Modifier.width(8.dp)); Text("Admin panel") }
                 }
-                if (alerts.isNotEmpty()) item {
+                if (alerts.isNotEmpty() && kind == "personal") item {
                     P2TCard {
                         Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Event, null, tint = P2T.Brand); Spacer(Modifier.width(8.dp)); Text("Upcoming for your exams", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f)); TextButton(onClick = { nav.go(Screen.Web("/#/exams", "Exams & dates")) }) { Text("All") } }
                         alerts.forEach { a ->
@@ -193,8 +209,9 @@ fun HomeScreen(nav: Nav) {
                     item {
                         P2TCard {
                             CoBrand(i, 40.dp)
-                            Text(if (i.optBoolean("own")) "Tests you share with your students" else "From ${i.optString("name")}", style = MaterialTheme.typography.titleMedium)
-                            if (instTests.isEmpty()) Text(if (i.optBoolean("own")) "Nothing shared yet. On a test's results page, turn on \"Show to my institute's students\"." else "No tests shared yet.", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
+                            val staff = kind == "institute"
+                            Text(if (staff) "Tests for your students" else "Tests from ${i.optString("name")}", style = MaterialTheme.typography.titleMedium)
+                            if (instTests.isEmpty()) Text(if (staff) "Nothing yet. Make a test and pick a batch under \"Who sees it\"." else "No tests for you yet.", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
                             instTests.forEach { t ->
                                 val mine = t.optString("mine")
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -203,18 +220,19 @@ fun HomeScreen(nav: Nav) {
                                         Text("${t.optInt("question_count")} Qs · ${t.optInt("duration_sec") / 60} min${if (t.optString("status") == "ended") " · ended" else ""}", style = MaterialTheme.typography.bodySmall, color = P2T.Muted)
                                     }
                                     when {
-                                        i.optBoolean("own") -> TextButton(onClick = { nav.go(Screen.Web("/#/test/${t.optString("id")}", "Results")) }) { Text("Results") }
+                                        kind == "institute" -> TextButton(onClick = { nav.go(Screen.Web("/#/tests", "Tests")) }) { Text("Results") }
                                         mine == "done" -> TextButton(onClick = { nav.go(Screen.Web("/#/results/${t.optString("code")}", "My answers")) }) { Text("My answers") }
                                         t.optString("status") == "ended" -> Pill("closed", Color(0xFFF1F5F9), P2T.Ink2)
                                         else -> FilledTonalButton(onClick = { nav.go(Screen.Exam(t.optString("code"))) }) { Text(if (mine == "writing") "Continue" else "Start") }
                                     }
                                 }
                             }
-                            TextButton(onClick = { nav.go(Screen.Web("/#/institute/${i.optString("slug")}", i.optString("name"))) }, contentPadding = PaddingValues(0.dp)) { Text("Institute page →") }
+                            if (kind == "student") TextButton(onClick = { nav.go(Screen.Web("/#/mybatches", "My batches")) }, contentPadding = PaddingValues(0.dp)) { Text("My batches & leaderboard →") }
+                            else TextButton(onClick = { nav.go(Screen.Web("/#/institute/${i.optString("slug")}", i.optString("name"))) }, contentPadding = PaddingValues(0.dp)) { Text("Student link & QR →") }
                         }
                     }
                 }
-                if (recs.isNotEmpty()) {
+                if (recs.isNotEmpty() && kind == "personal") {
                     item { SectionTitle("Recommended for your exams", "Store") { nav.go(Screen.Web("/#/store", "Store")) } }
                     items(recs) { b ->
                         val paise = b.optInt("price_paise")
