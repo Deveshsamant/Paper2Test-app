@@ -53,6 +53,8 @@ fun HomeScreen(nav: Nav) {
     var recs by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var alerts by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var instTests by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var spaces by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var menu by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var allTaken by remember { mutableStateOf(false) }
 
@@ -60,6 +62,11 @@ fun HomeScreen(nav: Nav) {
         try {
             // Came through an institute's link before signing in: join it now, then read the profile.
             Institutes.joinPending(app)
+            // Spaces (personal / my institute / institute I study at): a phone without a valid choice opens the default.
+            runCatching { app.api.get("/me/spaces") }.getOrNull()?.let { r ->
+                spaces = r.getJSONArray("spaces").objects()
+                if (spaces.none { it.optString("id") == app.session.space }) app.session.space = r.optString("default", "personal")
+            }
             user = app.api.get("/me").getJSONObject("user")
             // New account, or no username yet (a unique username is required): the website's welcome page (name,
             // username, photo, exams) once per app start; it closes itself when done.
@@ -76,7 +83,7 @@ fun HomeScreen(nav: Nav) {
             // Exam calendar alerts for the exams the user follows ("form closes in 3 days").
             alerts = runCatching { app.api.get("/me/alerts").getJSONArray("alerts").objects() }.getOrDefault(emptyList())
             // Tests the institute shares with its students.
-            if (user?.optJSONObject("institute") != null) instTests = runCatching { app.api.get("/me/institute/tests").getJSONArray("tests").objects() }.getOrDefault(emptyList())
+            instTests = if (user?.optJSONObject("institute") != null) runCatching { app.api.get("/me/institute/tests").getJSONArray("tests").objects() }.getOrDefault(emptyList()) else emptyList()
         } catch (e: ApiException) { if (e.status == 401) nav.replace(Screen.Login) else error = e.code }
         catch (e: Exception) { error = e.message }
     }
@@ -94,6 +101,16 @@ fun HomeScreen(nav: Nav) {
     val name = user?.optString("name")?.takeIf { it.isNotBlank() && it != "null" } ?: app.session.userName ?: "there"
     val uname = user?.optString("username")?.takeIf { it.isNotBlank() && it != "null" }
     val inst = user?.optJSONObject("institute")
+    val current = spaces.firstOrNull { it.optString("id") == app.session.space } ?: spaces.firstOrNull()
+    val kind = current?.optString("kind") ?: "personal"
+    /** Switch space: lists, branding and plan all belong to the space, so reload everything. */
+    fun switchSpace(id: String) {
+        menu = false
+        if (id == app.session.space) return
+        app.session.space = id
+        tests = null; attempts = null; instTests = emptyList()
+        load()
+    }
 
     Scaffold(containerColor = P2T.Canvas, topBar = {
         TopAppBar(colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White.copy(alpha = .92f)),
@@ -104,10 +121,31 @@ fun HomeScreen(nav: Nav) {
                 }
             },
             actions = {
-                IconButton(onClick = { nav.go(Screen.Web("/#/settings", "Profile & settings")) }) {
-                    RemoteImage(user?.optString("avatar_url")?.takeIf { it.isNotBlank() && it != "null" }, 34.dp, name, circle = true)
+                // Profile picture: switch space, profile & settings, sign out.
+                Box {
+                    IconButton(onClick = { menu = true }) {
+                        RemoteImage(user?.optString("avatar_url")?.takeIf { it.isNotBlank() && it != "null" }, 34.dp, name, circle = true)
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(16.dp), containerColor = Color.White) {
+                        if (spaces.size > 1) {
+                            Text("SWITCH SPACE", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), color = P2T.Muted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            spaces.forEach { s ->
+                                val sid = s.optString("id"); val on = sid == current?.optString("id")
+                                DropdownMenuItem(
+                                    text = { Column { Text(s.optString("name"), fontWeight = FontWeight.SemiBold); Text(s.optString("role"), color = P2T.Muted, style = MaterialTheme.typography.bodySmall) } },
+                                    leadingIcon = { RemoteImage(s.optString("logo_url").takeIf { it.isNotBlank() && it != "null" }, 32.dp, s.optString("name")) },
+                                    trailingIcon = { if (on) Icon(Icons.Default.Check, null, tint = P2T.Brand) },
+                                    onClick = { switchSpace(sid) },
+                                    modifier = if (on) Modifier.background(P2T.Tint) else Modifier,
+                                )
+                            }
+                            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                        }
+                        DropdownMenuItem(text = { Text("Profile & settings") }, leadingIcon = { Icon(Icons.Default.Person, null) }, onClick = { menu = false; nav.go(Screen.Web("/#/settings", "Profile & settings")) })
+                        if (kind == "institute") DropdownMenuItem(text = { Text(if (current?.optString("role") == "Owner") "Batches & teachers" else "My batches") }, leadingIcon = { Icon(Icons.Default.Groups, null) }, onClick = { menu = false; nav.go(Screen.Web("/#/batches", "Batches")) })
+                        DropdownMenuItem(text = { Text("Sign out") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) }, onClick = { menu = false; scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } })
+                    }
                 }
-                IconButton(onClick = { scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } }) { Icon(Icons.AutoMirrored.Filled.Logout, "Sign out", tint = P2T.Ink2) }
             })
     }, bottomBar = {
         NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
@@ -123,16 +161,17 @@ fun HomeScreen(nav: Nav) {
                 item {
                     Column(Modifier.padding(top = 4.dp)) {
                         Text("Hi, ${name.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-                        Text(uname?.let { "@$it" } ?: "Set a username in your profile", color = P2T.Muted, style = MaterialTheme.typography.bodyMedium)
+                        Text(listOfNotNull(uname?.let { "@$it" }, current?.takeIf { kind != "personal" }?.let { "${it.optString("name")} · ${it.optString("role")}" }).joinToString("  ·  "), color = P2T.Muted, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 item {
+                    // Student space: taking tests only (hosting is in the personal / institute space).
                     if (wide) Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
                         JoinCard(Modifier.weight(1f), code, { code = it }, nav, scope, ctx)
-                        HostCard(Modifier.weight(1f), nav)
+                        if (kind != "student") HostCard(Modifier.weight(1f), nav)
                     } else Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         JoinCard(Modifier, code, { code = it }, nav, scope, ctx)
-                        HostCard(Modifier, nav)
+                        if (kind != "student") HostCard(Modifier, nav)
                     }
                 }
                 // Admin accounts: the full admin panel (bundles, prices, calendar, announcements, users, AI spend).

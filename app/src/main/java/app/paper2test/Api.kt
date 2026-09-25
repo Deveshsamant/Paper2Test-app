@@ -25,6 +25,7 @@ class Api(val site: String, private val session: Session) {
         b.header("User-Agent", "Paper2TestApp/${BuildConfig.VERSION_NAME} Android")
         b.header("x-app-version", BuildConfig.VERSION_CODE.toString()) // the admin sees who is on old versions
         session.token?.let { b.header("Authorization", "Bearer $it") }
+        session.space?.let { b.header("x-p2t-space", it) } // papers, tests, plan and branding belong to the space
         http.newCall(b.build()).execute().use { res ->
             val text = res.body?.string().orEmpty()
             val obj = runCatching { JSONObject(text) }.getOrElse { JSONObject() }

@@ -38,7 +38,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
     val url = remember(path) {
         val tok = app.session.token
         val (base, hash) = if (path.contains('#')) path.substringBefore('#') to "#" + path.substringAfter('#') else path to ""
-        site + base + (if (tok != null) (if (base.contains('?')) "&" else "?") + "tok=" + Uri.encode(tok) else "") + hash
+        // Session and the app's current space handed to the website once (it keeps them for its own requests).
+        val params = listOfNotNull(tok?.let { "tok=" + Uri.encode(it) }, app.session.space?.let { "space=" + Uri.encode(it) })
+        site + base + (if (params.isNotEmpty()) (if (base.contains('?')) "&" else "?") + params.joinToString("&") else "") + hash
     }
     // Hardware back navigates inside the page first (exam palette etc.), then leaves the screen.
     BackHandler { if (web?.canGoBack() == true && !exam) web?.goBack() else nav.back() }

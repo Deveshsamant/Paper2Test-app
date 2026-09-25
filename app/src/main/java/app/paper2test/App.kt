@@ -29,6 +29,10 @@ class Session(ctx: Context) {
     var username: String?
         get() = prefs.getString("username", null)
         set(v) { prefs.edit().putString("username", v).apply() }
+    /** The space this phone is in: "personal", an institute id (owner / teacher) or "student:<id>" (#25). */
+    var space: String?
+        get() = prefs.getString("space", null)
+        set(v) { prefs.edit().apply { if (v == null) remove("space") else putString("space", v) }.apply() }
     /** This phone's push token as registered with the server (removed there on sign-out). */
     var pushToken: String?
         get() = prefs.getString("push_token", null)
