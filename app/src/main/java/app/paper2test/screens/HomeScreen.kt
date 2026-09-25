@@ -61,8 +61,10 @@ fun HomeScreen(nav: Nav) {
             // Came through an institute's link before signing in: join it now, then read the profile.
             Institutes.joinPending(app)
             user = app.api.get("/me").getJSONObject("user")
-            // New account: the website's welcome page (name, photo, exams) once; it closes itself when done or skipped.
-            if (user?.optBoolean("onboarded", true) == false && !app.session.welcomeOffered) {
+            // New account, or no username yet (a unique username is required): the website's welcome page (name,
+            // username, photo, exams) once per app start; it closes itself when done.
+            val noUsername = user?.optString("username").let { it.isNullOrBlank() || it == "null" }
+            if ((user?.optBoolean("onboarded", true) == false || noUsername) && !app.session.welcomeOffered) {
                 app.session.welcomeOffered = true
                 nav.go(Screen.Web("/#/welcome", "Welcome"))
                 return@launch
