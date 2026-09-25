@@ -90,6 +90,23 @@ private fun renderPdfPage(page: PdfRenderer.Page): ByteArray {
     return encodeBitmap(bmp)
 }
 
+/** Typed PDFs: the page's own text, so the server reads it free instead of sending the picture to the AI.
+ *  Same check as the website: enough readable (English/Hindi) text and no broken characters, else null. */
+private fun usableText(raw: String): String? {
+    val t = raw.replace(Regex("[ \t]+"), " ").replace(Regex("\n{3,}"), "\n\n").trim()
+    if (t.length < 300 || t.count { it == '�' } > 5) return null
+    val ok = t.count { it in 'A'..'Z' || it in 'a'..'z' || it in 'ऀ'..'ॿ' }
+    return if (ok >= t.length * 0.35) t else null
+}
+
+private fun pdfTexts(ctx: Context, file: File, pages: Int): List<String?> = try {
+    com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(ctx.applicationContext)
+    com.tom_roush.pdfbox.pdmodel.PDDocument.load(file).use { doc ->
+        val strip = com.tom_roush.pdfbox.text.PDFTextStripper() // the PDF's own reading order: sorting by position mixes two-column papers
+        (1..pages).map { p -> try { strip.startPage = p; strip.endPage = p; usableText(strip.getText(doc)) } catch (e: Exception) { null } }
+    }
+} catch (e: Exception) { List(pages) { null } }
+
 /** Copy the picked PDF into the cache (content URIs from cloud providers are not always seekable) and count its pages. */
 private suspend fun importPdf(ctx: Context, uri: Uri): Source.Pdf = withContext(Dispatchers.IO) {
     val name = ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null } ?: "paper.pdf"
@@ -153,9 +170,13 @@ fun ScanScreen(nav: Nav) {
                 val defaultTitle = (src as? Source.Pdf)?.name?.removeSuffix(".pdf") ?: "Scanned paper"
                 val paper = app.api.post("/papers", JSONObject().put("title", title.ifBlank { defaultTitle }).put("page_count", src.pageCount)).getJSONObject("paper")
                 val id = paper.getString("id"); paperId = id
+                // Typed PDF pages go up as text (read free); the picture rides along in case the text parser gives up.
+                val texts = if (src is Source.Pdf) { status = "Reading the PDF…"; withContext(Dispatchers.IO) { pdfTexts(ctx, src.file, src.pageCount) } } else emptyList()
                 suspend fun send(i: Int, jpeg: ByteArray) {
                     status = "Uploading page ${i + 1} of ${src.pageCount}…"
-                    app.api.post("/papers/$id/pages/${i + 1}/upload", JSONObject().put("kind", "image").put("mime", "image/jpeg").put("data_b64", Base64.encodeToString(jpeg, Base64.NO_WRAP)))
+                    val text = texts.getOrNull(i)
+                    app.api.post("/papers/$id/pages/${i + 1}/upload", JSONObject().put("kind", if (text != null) "text" else "image").apply { if (text != null) put("text", text) }
+                        .put("mime", "image/jpeg").put("data_b64", Base64.encodeToString(jpeg, Base64.NO_WRAP)))
                     progress = (i + 1f) / src.pageCount
                 }
                 when (src) {
@@ -173,6 +194,7 @@ fun ScanScreen(nav: Nav) {
             } catch (e: ApiException) {
                 status = when (e.code) {
                     "plan_limit" -> "Failed: your plan's paper limit is used up."
+                    "ai_page_limit" -> "Failed: your plan's AI pages for this month are used up (${e.body.optInt("used")}/${e.body.optInt("max")}). Typed PDFs don't count, only scans and photos."
                     "page_limit" -> "Failed: this paper has more pages than your plan allows (max ${e.body.optInt("max")}; paid plans allow 80)."
                     else -> "Failed: ${e.code}"
                 }
