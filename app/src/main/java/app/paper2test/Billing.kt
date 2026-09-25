@@ -13,7 +13,9 @@ import kotlin.coroutines.resume
 
 /** One thing on sale: our SKU (pack_1, teacher_m...) and Google Play's product for it (price comes from Google). */
 data class PlayItem(val sku: String, val type: String, val productId: String, val basePlanId: String?, val title: String, val blurb: String, val kind: String, val plan: String?,
-                    val details: ProductDetails?, val offerToken: String?, val price: String?)
+                    val details: ProductDetails?, val offerToken: String?, val price: String?,
+                    /** Price in paise (Google Play's, or the website price when Google Play is not available on this install). */
+                    val pricePaise: Long?, val wasPaise: Long?, val credits: Int?, val months: Int?)
 
 /** Google Play Billing for plans and paper packs. Google takes the payment; our server checks the purchase with
  *  Google and gives the plan / credits to the signed-in account (the same account the website uses), then marks it
@@ -57,16 +59,24 @@ class PlayBilling(context: Context, private val app: App) {
     }
 
     private fun item(j: JSONObject, d: ProductDetails?): PlayItem {
-        var token: String? = null; var price: String? = null
+        var token: String? = null; var price: String? = null; var micros: Long? = null
         if (d != null && j.optString("type") == "subs") {
             val offer = d.subscriptionOfferDetails?.firstOrNull { it.basePlanId == j.optString("base_plan_id") && it.offerId == null }
-            token = offer?.offerToken; price = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()?.formattedPrice
+            val phase = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()
+            token = offer?.offerToken; price = phase?.formattedPrice; micros = phase?.priceAmountMicros
         } else if (d != null) {
             val o = d.oneTimePurchaseOfferDetailsList?.firstOrNull()
             token = o?.offerToken; price = o?.formattedPrice ?: d.oneTimePurchaseOfferDetails?.formattedPrice
+            micros = o?.priceAmountMicros ?: d.oneTimePurchaseOfferDetails?.priceAmountMicros
         }
+        // Not from Google Play (e.g. a test install): show the website price, but buying stays off (no product details).
+        val webPaise = j.optLong("price_paise").takeIf { it > 0 }
+        val paise = micros?.let { it / 10_000 } ?: webPaise
+        if (price == null && webPaise != null) price = rupees(webPaise)
+        val was = j.optLong("original_price_paise").takeIf { it > 0 && paise != null && it > paise }
         return PlayItem(j.optString("sku"), j.optString("type"), j.optString("product_id"), j.optString("base_plan_id").ifBlank { null }, j.optString("title"), j.optString("blurb"),
-            j.optString("kind"), j.optString("plan").ifBlank { null }, d, token, price)
+            j.optString("kind"), j.optString("plan").ifBlank { null }, d, token, price, paise, was,
+            j.optInt("credits").takeIf { it > 0 }, j.optInt("months").takeIf { it > 0 })
     }
 
     private suspend fun query(ids: List<String>, type: String): List<ProductDetails> {
@@ -107,3 +117,7 @@ class PlayBilling(context: Context, private val app: App) {
         }
     }
 }
+
+/** ₹ from paise, without ".00" for whole rupees. */
+fun rupees(paise: Long): String = if (paise % 100 == 0L) "₹" + java.text.NumberFormat.getIntegerInstance(java.util.Locale("en", "IN")).format(paise / 100)
+    else "₹" + String.format(java.util.Locale.US, "%.2f", paise / 100.0)
