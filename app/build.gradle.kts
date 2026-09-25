@@ -15,8 +15,8 @@ android {
         applicationId = "app.paper2test"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
         // Web OAuth client id: Credential Manager issues ID tokens for this audience, which the API already accepts.
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"551296682410-7tjhbhomppk9q8j2lacfv47o8cr4lq5d.apps.googleusercontent.com\"")
         buildConfigField("String", "SITE", "\"https://paper2test.app\"")

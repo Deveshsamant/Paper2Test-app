@@ -33,6 +33,10 @@ class Session(ctx: Context) {
     var space: String?
         get() = prefs.getString("space", null)
         set(v) { prefs.edit().apply { if (v == null) remove("space") else putString("space", v) }.apply() }
+    /** The account's spaces as last loaded (JSON array), so Home shows the right tabs before the network answers. */
+    var spacesJson: String?
+        get() = prefs.getString("spaces_json", null)
+        set(v) { prefs.edit().apply { if (v == null) remove("spaces_json") else putString("spaces_json", v) }.apply() }
     /** This phone's push token as registered with the server (removed there on sign-out). */
     var pushToken: String?
         get() = prefs.getString("push_token", null)

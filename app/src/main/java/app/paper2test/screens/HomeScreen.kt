@@ -53,7 +53,7 @@ fun HomeScreen(nav: Nav) {
     var recs by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var alerts by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var instTests by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
-    var spaces by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var spaces by remember { mutableStateOf(app.session.spacesJson?.let { runCatching { org.json.JSONArray(it).objects() }.getOrNull() } ?: emptyList()) }
     var menu by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var allTaken by remember { mutableStateOf(false) }
@@ -65,6 +65,7 @@ fun HomeScreen(nav: Nav) {
             // Spaces (personal / my institute / institute I study at): a phone without a valid choice opens the default.
             runCatching { app.api.get("/me/spaces") }.getOrNull()?.let { r ->
                 spaces = r.getJSONArray("spaces").objects()
+                app.session.spacesJson = r.getJSONArray("spaces").toString()
                 if (spaces.none { it.optString("id") == app.session.space }) app.session.space = r.optString("default", "personal")
             }
             user = app.api.get("/me").getJSONObject("user")

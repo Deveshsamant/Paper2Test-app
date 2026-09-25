@@ -7,11 +7,14 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.JsResult
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,6 +37,11 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
     val app = App.of(ctx)
     var web by remember { mutableStateOf<WebView?>(null) }
     var loading by remember { mutableStateOf(true) }
+    // <input type="file"> in the page (e.g. importing students from Excel): Android's file picker.
+    var fileCb by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        fileCb?.onReceiveValue(uri?.let { arrayOf(it) } ?: emptyArray()); fileCb = null
+    }
     val site = BuildConfig.SITE
     val url = remember(path) {
         val tok = app.session.token
@@ -79,10 +87,24 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                         /** The site's Pricing page inside the app: the native Plans screen (Google Play Billing). */
                         @JavascriptInterface
                         fun openPlans() { post { nav.go(Screen.Plans) } }
+                        /** A file made by the page (Excel export, sample sheet): saved to Downloads. */
+                        @JavascriptInterface
+                        fun saveFile(name: String, base64: String, mime: String) {
+                            val safe = name.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(120).ifBlank { "file" }
+                            val ok = runCatching { saveToDownloads(c, safe, android.util.Base64.decode(base64, android.util.Base64.DEFAULT), mime) }.isSuccess
+                            post { android.widget.Toast.makeText(c, if (ok) "Saved to Downloads: $safe" else "Could not save $safe", android.widget.Toast.LENGTH_LONG).show() }
+                        }
                     }, "P2TApp")
                     // Without a WebChromeClient, confirm()/alert() silently return false — the exam's
                     // "Submit now?" prompt would never be answered and the button would look dead.
                     webChromeClient = object : WebChromeClient() {
+                        override fun onShowFileChooser(view: WebView, cb: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+                            fileCb?.onReceiveValue(null); fileCb = cb
+                            // accept=".xlsx,.csv,<mime types>": give the picker the mime types (anything if none).
+                            val types = params.acceptTypes.flatMap { it.split(',') }.map { it.trim() }.filter { it.contains('/') }
+                                .plus(if (params.acceptTypes.any { it.contains(".csv") }) listOf("text/csv", "text/comma-separated-values", "application/vnd.ms-excel") else emptyList())
+                            return runCatching { picker.launch((types.ifEmpty { listOf("*/*") }).distinct().toTypedArray()); true }.getOrElse { fileCb = null; false }
+                        }
                         override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult): Boolean {
                             android.app.AlertDialog.Builder(c).setMessage(message)
                                 .setPositiveButton("OK") { _, _ -> result.confirm() }
@@ -126,5 +148,20 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
             }, modifier = Modifier.fillMaxSize())
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
+    }
+}
+
+/** Saves bytes as a file in Downloads (Android 10+), or the app's own Downloads folder on older phones. */
+private fun saveToDownloads(ctx: android.content.Context, name: String, bytes: ByteArray, mime: String) {
+    if (android.os.Build.VERSION.SDK_INT >= 29) {
+        val values = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Downloads.DISPLAY_NAME, name)
+            put(android.provider.MediaStore.Downloads.MIME_TYPE, mime)
+        }
+        val uri = ctx.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: error("no uri")
+        ctx.contentResolver.openOutputStream(uri)!!.use { it.write(bytes) }
+    } else {
+        val dir = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: ctx.filesDir
+        java.io.File(dir, name).writeBytes(bytes)
     }
 }
