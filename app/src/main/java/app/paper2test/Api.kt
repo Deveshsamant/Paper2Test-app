@@ -22,7 +22,8 @@ class Api(val site: String, private val session: Session) {
     suspend fun postBytes(path: String, bytes: ByteArray, mime: String): JSONObject = call(Request.Builder().url("$site/api$path").post(bytes.toRequestBody(mime.toMediaType())))
 
     private suspend fun call(b: Request.Builder): JSONObject = withContext(Dispatchers.IO) {
-        b.header("User-Agent", "Paper2TestApp/1.0 Android")
+        b.header("User-Agent", "Paper2TestApp/${BuildConfig.VERSION_NAME} Android")
+        b.header("x-app-version", BuildConfig.VERSION_CODE.toString()) // the admin sees who is on old versions
         session.token?.let { b.header("Authorization", "Bearer $it") }
         http.newCall(b.build()).execute().use { res ->
             val text = res.body?.string().orEmpty()

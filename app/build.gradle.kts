@@ -15,8 +15,8 @@ android {
         applicationId = "app.paper2test"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
         // Web OAuth client id: Credential Manager issues ID tokens for this audience, which the API already accepts.
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"551296682410-7tjhbhomppk9q8j2lacfv47o8cr4lq5d.apps.googleusercontent.com\"")
         buildConfigField("String", "SITE", "\"https://paper2test.app\"")
@@ -48,6 +48,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+    // Google Play in-app updates (the app offers / requires new versions without leaving it)
+    implementation("com.google.android.play:app-update:2.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Push notifications (Firebase Cloud Messaging, free)

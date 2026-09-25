@@ -8,9 +8,27 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.SystemBarStyle
 import app.paper2test.ui.P2TTheme
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import app.paper2test.screens.*
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /** Where the user is. The app is a native shell; heavy screens open the site in a WebView with the session handed over. */
 sealed class Screen {
@@ -27,6 +45,14 @@ class MainActivity : ComponentActivity() {
     private val pendingUrl = mutableStateOf<String?>(null) // tapped notification: page to open
     private val homeRefresh = mutableIntStateOf(0) // bumped when an institute link arrives while the app is open
 
+    // App updates: what the server says (newest / minimum version) and Google Play's in-app update flow.
+    private val update = mutableStateOf<UpdateInfo?>(null)
+    private val updateDismissed = mutableStateOf(false)
+    private val updateDownloaded = mutableStateOf(false) // a background (flexible) update is ready to install
+    private lateinit var appUpdates: AppUpdateManager
+    private val updateFlow = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { }
+    private val installListener = InstallStateUpdatedListener { if (it.installStatus() == InstallStatus.DOWNLOADED) updateDownloaded.value = true }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The app is always light: dark status-bar icons even when the phone is in dark mode.
@@ -35,6 +61,9 @@ class MainActivity : ComponentActivity() {
         instituteFromIntent(intent)
         Institutes.readInstallReferrer(this)
         pendingUrl.value = intent?.getStringExtra("url")
+        appUpdates = AppUpdateManagerFactory.create(this)
+        appUpdates.registerListener(installListener)
+        lifecycleScope.launch { checkForUpdate() }
         setContent {
             val app = App.of(this)
             var stack by remember { mutableStateOf<List<Screen>>(listOf(if (app.session.signedIn) Screen.Home else Screen.Login)) }
@@ -57,17 +86,58 @@ class MainActivity : ComponentActivity() {
 
             P2TTheme {
                 Surface {
-                    when (val s = stack.last()) {
-                        Screen.Login -> LoginScreen(nav)
-                        Screen.Home -> key(homeRefresh.intValue) { HomeScreen(nav) }
-                        Screen.Scan -> ScanScreen(nav)
-                        Screen.Bundles -> BundlesScreen(nav)
-                        is Screen.Exam -> WebScreen(nav, "/t/${s.code}", "Test ${s.code}", exam = true)
-                        is Screen.Web -> WebScreen(nav, s.path, s.title)
+                    Box(Modifier.fillMaxSize()) {
+                        val current = stack.last()
+                        when (val s = current) {
+                            Screen.Login -> LoginScreen(nav)
+                            Screen.Home -> key(homeRefresh.intValue) { HomeScreen(nav) }
+                            Screen.Scan -> ScanScreen(nav)
+                            Screen.Bundles -> BundlesScreen(nav)
+                            is Screen.Exam -> WebScreen(nav, "/t/${s.code}", "Test ${s.code}", exam = true)
+                            is Screen.Web -> WebScreen(nav, s.path, s.title)
+                        }
+                        // Never interrupt a test in progress; everywhere else show what the update check found.
+                        val u = update.value
+                        if (current !is Screen.Exam) {
+                            if (u?.need == UpdateNeed.REQUIRED) UpdateRequired(u) { Updates.openPlay(this@MainActivity, u.playUrl) }
+                            else Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp)) {
+                                if (updateDownloaded.value) UpdateBanner("New version downloaded", "Restart", { appUpdates.completeUpdate() }, null)
+                                else if (u?.need == UpdateNeed.OPTIONAL && !updateDismissed.value)
+                                    UpdateBanner(u.message.ifBlank { "Version ${u.latestName} is available" }, "Update", { Updates.openPlay(this@MainActivity, u.playUrl) }, { updateDismissed.value = true })
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    /** Ask the server which versions are current; when this one is behind and Google Play has the update, use Play's
+     *  own in-app update screen (required = full screen, optional = downloads in the background). Installs that did not
+     *  come from Google Play fall back to the banner / "Update required" page, which open the Play Store. */
+    private suspend fun checkForUpdate() {
+        val info = runCatching { Updates.check(App.of(this)) }.getOrNull() ?: return
+        update.value = info
+        if (info.need == UpdateNeed.NONE) return
+        val play = runCatching { appUpdates.appUpdateInfo.await() }.getOrNull() ?: return
+        if (play.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE) return
+        val type = if (info.need == UpdateNeed.REQUIRED) AppUpdateType.IMMEDIATE else AppUpdateType.FLEXIBLE
+        if (play.isUpdateTypeAllowed(type)) runCatching { appUpdates.startUpdateFlowForResult(play, updateFlow, AppUpdateOptions.newBuilder(type).build()) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Back from Play's update screen: continue an interrupted required update; notice a finished download.
+        if (::appUpdates.isInitialized) appUpdates.appUpdateInfo.addOnSuccessListener { info ->
+            if (info.installStatus() == InstallStatus.DOWNLOADED) updateDownloaded.value = true
+            if (info.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS)
+                runCatching { appUpdates.startUpdateFlowForResult(info, updateFlow, AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()) }
+        }
+    }
+
+    override fun onDestroy() {
+        if (::appUpdates.isInitialized) appUpdates.unregisterListener(installListener)
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
