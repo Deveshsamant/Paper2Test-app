@@ -1,0 +1,52 @@
+PAPER2TEST ADMIN API (for the admin Android app) - generated 26 Sep 2026 from server/src/routes/admin.ts
+Base: https://paper2test.app  |  Auth: header 'authorization: Bearer <session token>' (same token as the main app; the account's email must be an admin).
+Request/response shapes: read the admin website source (github.com/Deveshsamant/Paper2Test-admin, src/*.tsx) - each page calls these.
+Admin website pages: Dashboard (stats, AI spend), Bundles (bundles, sections, items, covers/banners, study PDFs in 1.5 MB chunks, apply access), Prices (our prices + Google Play prices), Coupons, Purchases (list, grant, revoke, plan purchases), Referrals (list, revoke), Users (list, grant plan/credits, admins add/remove), Calendar (exam dates CRUD), Announcements (list, send), App updates (latest/min version, message).
+
+GET /api/admin/announcements
+POST /api/admin/announcements
+PUT /api/admin/bundles/:id/:kind{cover|banner}
+DELETE /api/admin/bundles/:id/:kind{cover|banner}
+POST /api/admin/bundles/:id/files
+PUT /api/admin/files/:id/chunks/:n
+POST /api/admin/files/:id/complete
+PUT /api/admin/files/:id
+DELETE /api/admin/files/:id
+GET /api/admin/calendar
+POST /api/admin/calendar
+PUT /api/admin/calendar/:id
+DELETE /api/admin/calendar/:id
+GET /api/admin/bundles
+POST /api/admin/bundles
+GET /api/admin/bundles/:id
+PUT /api/admin/bundles/:id
+POST /api/admin/bundles/:id/apply-access
+DELETE /api/admin/bundles/:id
+POST /api/admin/bundles/:id/items
+PUT /api/admin/bundles/:id/items/:itemId
+DELETE /api/admin/bundles/:id/items/:itemId
+POST /api/admin/bundles/:id/sections
+PUT /api/admin/bundles/:id/sections/:sid
+DELETE /api/admin/bundles/:id/sections/:sid
+GET /api/admin/papers
+GET /api/admin/coupons
+POST /api/admin/coupons
+PUT /api/admin/coupons/:code
+DELETE /api/admin/coupons/:code
+GET /api/admin/purchases
+POST /api/admin/purchases/grant
+POST /api/admin/purchases/:id/revoke
+GET /api/admin/referrals
+POST /api/admin/referrals/:id/revoke
+GET /api/admin/users
+GET /api/admin/admins
+POST /api/admin/admins
+DELETE /api/admin/admins/:email
+POST /api/admin/users/grant
+GET /api/admin/prices
+PUT /api/admin/prices/play
+PUT /api/admin/prices
+GET /api/admin/app
+PUT /api/admin/app
+GET /api/admin/plan-purchases
+GET /api/admin/stats
