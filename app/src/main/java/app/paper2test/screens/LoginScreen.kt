@@ -109,15 +109,14 @@ fun LoginScreen(nav: Nav) {
         val imgW = if (maxWidth > maxHeight / 2) maxWidth else maxHeight / 2
         val imgH = imgW * 2
         val side = maxWidth * 0.1f
-        val bottomGap = maxHeight * 0.1f
+        val bottomGap = maxHeight * 0.065f
         Box(Modifier.fillMaxSize()) {
             Image(painterResource(R.drawable.mobile_onboarding_bg), null, Modifier.align(Alignment.TopCenter).requiredWidth(imgW).height(imgH), contentScale = ContentScale.FillBounds)
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(start = side, end = side, bottom = bottomGap), horizontalAlignment = Alignment.CenterHorizontally) {
-                P2TCard(padding = 22.dp) {
-                    Text("Welcome back", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.8).sp, color = Color(0xFF0F172A))
-                    Text("Sign in to host tests, keep your scores in one place and use test bundles.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(2.dp))
-                    OutlinedButton(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(14.dp),
+                P2TCard(padding = 18.dp) {
+                    Text("Welcome back", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 27.sp, letterSpacing = (-0.7).sp, color = Color(0xFF0F172A))
+                    Text("Sign in to host tests, keep your scores in one place and use test bundles.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Color(0xFF64748B), fontSize = 14.sp, lineHeight = 19.sp)
+                    OutlinedButton(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = Color(0xFF0F172A)),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)), contentPadding = PaddingValues(horizontal = 16.dp)) {
                         Image(painterResource(R.drawable.ic_google), null, Modifier.size(22.dp)); Spacer(Modifier.width(10.dp))
@@ -130,7 +129,7 @@ fun LoginScreen(nav: Nav) {
                         Icon(Icons.Default.Email, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Use email and password", fontWeight = FontWeight.SemiBold)
                     }
                     error?.let { Text(it, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                    Text("By continuing you agree to the Terms and Privacy Policy.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+                    Text("By continuing you agree to the Terms and Privacy Policy.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 11.sp, lineHeight = 15.sp, color = Color(0xFF64748B))
                 }
             }
         }
