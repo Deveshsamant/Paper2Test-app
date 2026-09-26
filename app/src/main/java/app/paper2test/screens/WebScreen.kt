@@ -75,7 +75,8 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false, tab:
             IconButton(onClick = { if (web?.canGoBack() == true) web?.goBack() else nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
         })
     }, bottomBar = { if (tab != null && !exam) TabBar(nav, tab) }) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        // imePadding: with edge-to-edge the window does not shrink for the keyboard, so pad by its height.
+        Box(Modifier.padding(pad).consumeWindowInsets(pad).imePadding().fillMaxSize()) {
             AndroidView(factory = { c ->
                 WebView(c).apply {
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)

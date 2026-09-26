@@ -103,16 +103,16 @@ fun LoginScreen(nav: Nav) {
         ctl?.isAppearanceLightStatusBars = false; ctl?.isAppearanceLightNavigationBars = true
         onDispose { ctl?.isAppearanceLightStatusBars = !appDark; ctl?.isAppearanceLightNavigationBars = !appDark }
     }
-    var showCode by remember { mutableStateOf(false) }
     P2TTheme(dark = false) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFFB7D4FE))) {
         // The picture is 1:2. Fit the width, or the height on taller screens (a little is trimmed at the sides).
         val imgW = if (maxWidth > maxHeight / 2) maxWidth else maxHeight / 2
         val imgH = imgW * 2
         val side = maxWidth * 0.1f
-        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        val bottomGap = maxHeight * 0.1f
+        Box(Modifier.fillMaxSize()) {
             Image(painterResource(R.drawable.mobile_onboarding_bg), null, Modifier.align(Alignment.TopCenter).requiredWidth(imgW).height(imgH), contentScale = ContentScale.FillBounds)
-            Column(Modifier.fillMaxWidth().padding(top = imgH * 0.635f, start = side, end = side, bottom = 24.dp).navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(start = side, end = side, bottom = bottomGap), horizontalAlignment = Alignment.CenterHorizontally) {
                 P2TCard(padding = 22.dp) {
                     Text("Welcome back", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.8).sp, color = Color(0xFF0F172A))
                     Text("Sign in to host tests, keep your scores in one place and use test bundles.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium)
@@ -131,17 +131,6 @@ fun LoginScreen(nav: Nav) {
                     }
                     error?.let { Text(it, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                     Text("By continuing you agree to the Terms and Privacy Policy.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
-                }
-                // Students join a test with a code, no account needed: tucked under the card.
-                TextButton(onClick = { showCode = !showCode }, modifier = Modifier.padding(top = 8.dp)) {
-                    Icon(Icons.Default.Pin, null, Modifier.size(18.dp), tint = Color(0xFF1D4ED8)); Spacer(Modifier.width(6.dp))
-                    Text(if (showCode) "Hide" else "Have a test code?", color = Color(0xFF1D4ED8), fontWeight = FontWeight.SemiBold)
-                }
-                if (showCode) P2TCard(padding = 18.dp) {
-                    CodeField(code, { code = it }, onGo = { nav.go(Screen.Exam(code)) })
-                    OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                        Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code")
-                    }
                 }
             }
         }
