@@ -125,7 +125,7 @@ fun PlansScreen(nav: Nav, tab: Boolean = false) {
                             Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (on) P2T.Brand else Color.Transparent).clickable { yearly = y }.padding(vertical = 10.dp),
                                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                 Text(label, color = if (on) Color.White else P2T.Ink2, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                if (y && save != null) { Spacer(Modifier.width(6.dp)); Text("SAVE $save%", Modifier.clip(CircleShape).background(if (on) Color(0x33FFFFFF) else Color(0xFFD1FAE5)).padding(horizontal = 7.dp, vertical = 2.dp), color = if (on) Color.White else P2T.OkInk, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold) }
+                                if (y && save != null) { Spacer(Modifier.width(6.dp)); Text("SAVE $save%", Modifier.clip(CircleShape).background(if (on) Color(0x33FFFFFF) else P2T.OkBg).padding(horizontal = 7.dp, vertical = 2.dp), color = if (on) Color.White else P2T.OkInk, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold) }
                             }
                         }
                     }
@@ -161,7 +161,7 @@ fun PlansScreen(nav: Nav, tab: Boolean = false) {
 
 @Composable
 private fun Note(text: String, icon: ImageVector) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White).border(1.dp, P2T.Line, RoundedCornerShape(14.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(P2T.Card).border(1.dp, P2T.Line, RoundedCornerShape(14.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, Modifier.size(20.dp), tint = P2T.Brand); Spacer(Modifier.width(10.dp))
         Text(text, color = P2T.Ink2, fontSize = 13.sp)
     }
@@ -171,7 +171,7 @@ private fun Note(text: String, icon: ImageVector) {
 @Composable
 private fun CurrentPlan(me: JSONObject?) {
     val shape = RoundedCornerShape(20.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(P2T.Tint, Color.White))).border(1.dp, P2T.Tint3, shape).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(P2T.Tint, P2T.Card))).border(1.dp, P2T.Tint3, shape).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("CURRENT PLAN", color = P2T.Brand, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
         if (me == null) { Text("Loading…", color = P2T.Muted); return@Column }
         val plan = me.optString("plan", "free")
@@ -188,7 +188,7 @@ private fun CurrentPlan(me: JSONObject?) {
                 }
                 if (cap != null) Text("$used / $cap papers ${if (perMonth != null) "this month" else "used"}", color = P2T.Ink2, fontSize = 13.sp)
             }
-            Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(Color.White).border(1.dp, P2T.Tint3, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(P2T.Card).border(1.dp, P2T.Tint3, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.WorkspacePremium, null, Modifier.size(28.dp), tint = P2T.Brand)
             }
         }
@@ -206,15 +206,15 @@ private fun PlanCard(plan: String, it: PlayItem, popular: Boolean, isCurrent: Bo
     val per = when { it.type == "subs" && it.months == 12 -> "/ year"; it.type == "subs" -> "/ month"; else -> "for a year" }
     Box(Modifier.fillMaxWidth().padding(top = if (popular) 12.dp else 0.dp)) {
         Column(
-            Modifier.fillMaxWidth().then(if (popular) Modifier.shadow(16.dp, shape, spotColor = P2T.Brand2) else Modifier).clip(shape).background(Color.White)
+            Modifier.fillMaxWidth().then(if (popular) Modifier.shadow(16.dp, shape, spotColor = P2T.Brand2) else Modifier).clip(shape).background(P2T.Card)
                 .border(if (popular) 2.dp else 1.dp, if (popular) P2T.Brand2 else P2T.Line, shape).padding(18.dp).animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(if (popular) P2T.Brand else P2T.Tint2), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (popular) Color.White else P2T.Brand) }
                 Spacer(Modifier.weight(1f))
-                if (isCurrent) Pill("Your plan", bg = Color(0xFFECFDF5), fg = P2T.OkInk)
-                else if (it.wasPaise != null && it.pricePaise != null) Pill("${((1 - it.pricePaise.toDouble() / it.wasPaise) * 100).toInt()}% off", bg = Color(0xFFECFDF5), fg = P2T.OkInk)
+                if (isCurrent) Pill("Your plan", bg = P2T.OkBg, fg = P2T.OkInk)
+                else if (it.wasPaise != null && it.pricePaise != null) Pill("${((1 - it.pricePaise.toDouble() / it.wasPaise) * 100).toInt()}% off", bg = P2T.OkBg, fg = P2T.OkInk)
                 else if (plan == "student") Pill("One-time", bg = P2T.Tint, fg = P2T.Ink2)
             }
             Text(name, style = MaterialTheme.typography.headlineSmall)
@@ -256,7 +256,7 @@ private fun PackRow(it: PlayItem, best: Boolean, busy: Boolean, buyable: Boolean
     val n = it.credits ?: 1
     val perPaper = it.pricePaise?.let { p -> rupees(p / n) }
     Box {
-        Row(Modifier.fillMaxWidth().clip(shape).background(Color.White).border(if (best) 2.dp else 1.dp, if (best) P2T.Brand2 else P2T.Line, shape).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(shape).background(P2T.Card).border(if (best) 2.dp else 1.dp, if (best) P2T.Brand2 else P2T.Line, shape).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(if (best) P2T.Tint3 else P2T.Tint), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Text("$n", fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = P2T.Brand)
                 Text(if (n == 1) "PAPER" else "PAPERS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = P2T.Muted)
@@ -311,7 +311,7 @@ private fun Faq() {
 private fun FaqItem(q: String, a: String) {
     var open by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(14.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(Color.White).border(1.dp, P2T.Line, shape).clickable { open = !open }.padding(14.dp).animateContentSize()) {
+    Column(Modifier.fillMaxWidth().clip(shape).background(P2T.Card).border(1.dp, P2T.Line, shape).clickable { open = !open }.padding(14.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(q, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
             Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = P2T.Brand)

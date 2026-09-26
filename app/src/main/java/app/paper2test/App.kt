@@ -8,6 +8,8 @@ class App : Application() {
     lateinit var api: Api
     /** Google Play Billing (plans and paper packs), connected on first use. */
     val billing by lazy { PlayBilling(this, this) }
+    /** "system" (follow the phone), "light" or "dark": the whole app, native screens and web pages. */
+    val themeMode by lazy { androidx.compose.runtime.mutableStateOf(session.theme ?: "system") }
     override fun onCreate() {
         super.onCreate()
         session = Session(this)
@@ -41,6 +43,9 @@ class Session(ctx: Context) {
     var pushToken: String?
         get() = prefs.getString("push_token", null)
         set(v) { prefs.edit().putString("push_token", v).apply() }
+    var theme: String?
+        get() = prefs.getString("theme", null)
+        set(v) { prefs.edit().apply { if (v == null) remove("theme") else putString("theme", v) }.apply() }
     /** A friend's invite code (paper2test.app/r/<code>, or the Play install link): claimed after sign-in. */
     var refCode: String?
         get() = prefs.getString("ref_code", null)

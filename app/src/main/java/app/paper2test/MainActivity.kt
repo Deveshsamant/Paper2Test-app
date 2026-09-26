@@ -92,7 +92,14 @@ class MainActivity : ComponentActivity() {
             }
             BackHandler(enabled = stack.size > 1) { nav.back() }
 
-            P2TTheme {
+            // Light / dark: the choice in Settings, else the phone's. Status and navigation bar icons follow.
+            val mode by app.themeMode
+            val dark = when (mode) { "dark" -> true; "light" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
+            LaunchedEffect(dark) {
+                val bars = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.parseColor("#111A2E")) else SystemBarStyle.light(android.graphics.Color.WHITE, android.graphics.Color.WHITE))
+            }
+            P2TTheme(dark = dark) {
                 Surface {
                     Box(Modifier.fillMaxSize()) {
                         val current = stack.last()

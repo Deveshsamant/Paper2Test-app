@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import app.paper2test.App
 import app.paper2test.Nav
 import app.paper2test.Screen
+import app.paper2test.ui.P2T
 import org.json.JSONArray
 
 /** One bottom tab: [screen] null = Home. */
@@ -52,7 +53,7 @@ fun currentSpace(app: App): Pair<String, Boolean> {
 fun TabBar(nav: Nav, selected: String, kind: String? = null, owner: Boolean? = null) {
     val app = App.of(LocalContext.current)
     val (k, o) = if (kind != null) kind to (owner ?: false) else currentSpace(app)
-    NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+    NavigationBar(containerColor = P2T.Card, tonalElevation = 0.dp) {
         tabsFor(k, o).forEach { t ->
             NavigationBarItem(selected = t.id == selected, onClick = { if (t.id != selected) nav.tab(t.screen ?: Screen.Home) },
                 icon = { Icon(t.icon, null) }, label = { Text(t.label, maxLines = 1) })

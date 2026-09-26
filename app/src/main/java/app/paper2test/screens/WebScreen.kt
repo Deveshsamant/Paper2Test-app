@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import app.paper2test.*
+import app.paper2test.ui.P2T
 
 /**
  * The website inside the app. The exam room and the host/review/results/store screens are the same tested pages
@@ -44,11 +45,15 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false, tab:
         fileCb?.onReceiveValue(uri?.let { arrayOf(it) } ?: emptyArray()); fileCb = null
     }
     val site = BuildConfig.SITE
+    val darkNow = P2T.isDark
+    // Switched while this page is open (e.g. from Settings): tell the page at once.
+    LaunchedEffect(darkNow) { web?.evaluateJavascript("document.documentElement.setAttribute('data-theme','${if (darkNow) "dark" else "light"}')", null) }
     val url = remember(path) {
         val tok = app.session.token
         val (base, hash) = if (path.contains('#')) path.substringBefore('#') to "#" + path.substringAfter('#') else path to ""
         // Session and the app's current space handed to the website once (it keeps them for its own requests).
-        val params = listOfNotNull(tok?.let { "tok=" + Uri.encode(it) }, app.session.space?.let { "space=" + Uri.encode(it) })
+        // The page takes the app's light / dark (it cannot see the app's choice otherwise).
+        val params = listOfNotNull(tok?.let { "tok=" + Uri.encode(it) }, app.session.space?.let { "space=" + Uri.encode(it) }, "theme=" + if (darkNow) "dark" else "light")
         site + base + (if (params.isNotEmpty()) (if (base.contains('?')) "&" else "?") + params.joinToString("&") else "") + hash
     }
     // Hardware back navigates inside the page first (exam palette etc.), then leaves the screen.
@@ -65,8 +70,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false, tab:
     // One back button: this arrow (the website hides its own "← Back" links in the app). It goes back inside the
     // page first, like the phone's Back. A tab's first page has no arrow: the bottom bar is the way around.
     Scaffold(topBar = {
-        if (!exam) TopAppBar(title = { Text(title) }, navigationIcon = {
-            if (tab == null || canBack) IconButton(onClick = { if (web?.canGoBack() == true) web?.goBack() else nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+        // A tab's first page has its own heading and the bottom bar: no app bar there (no doubled title).
+        if (!exam && (tab == null || canBack)) TopAppBar(title = { Text(title) }, navigationIcon = {
+            IconButton(onClick = { if (web?.canGoBack() == true) web?.goBack() else nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
         })
     }, bottomBar = { if (tab != null && !exam) TabBar(nav, tab) }) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -92,6 +98,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false, tab:
                         /** Email sign-in / sign-up finished on the website's page: the app keeps the session and opens Home. */
                         @JavascriptInterface
                         fun signedIn(token: String) { if (token.length in 20..2000) post { app.session.token = token; nav.replace(Screen.Home) } }
+                        /** Theme picked in the website's Settings inside the app: system / light / dark for the whole app. */
+                        @JavascriptInterface
+                        fun setTheme(mode: String) { if (mode in listOf("system", "light", "dark")) post { app.session.theme = mode; app.themeMode.value = mode } }
                         /** The site's Pricing page inside the app: the native Plans screen (Google Play Billing). */
                         @JavascriptInterface
                         fun openPlans() { post { nav.go(Screen.Plans) } }

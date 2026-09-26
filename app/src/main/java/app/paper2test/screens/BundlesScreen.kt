@@ -86,7 +86,7 @@ private fun BundleCard(b: JSONObject, nav: Nav) {
     val files = b.optJSONArray("files")?.length() ?: 0
     var showAll by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(18.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(Color.White).border(1.dp, P2T.Line, shape)) {
+    Column(Modifier.fillMaxWidth().clip(shape).background(P2T.Card).border(1.dp, P2T.Line, shape)) {
         // Gradient header: exam, title, facts, progress
         Column(Modifier.fillMaxWidth().background(P2T.Hero).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             b.optString("exam").takeIf { it.isNotBlank() && it != "null" }?.let { Pill(it.uppercase(), bg = Color(0x29FFFFFF), fg = Color.White) }
@@ -137,21 +137,21 @@ private fun HeaderFact(icon: ImageVector, text: String) {
 @Composable
 private fun TestRow(t: BundleTest, onClick: () -> Unit) {
     val (icon, tint, bg) = when (t.state) {
-        "open" -> Triple(Icons.Default.Timelapse, P2T.Warn, Color(0xFFFFFBEB))
-        "done" -> Triple(Icons.Default.CheckCircle, P2T.Ok, Color(0xFFECFDF5))
+        "open" -> Triple(Icons.Default.Timelapse, P2T.Warn, P2T.WarnBg)
+        "done" -> Triple(Icons.Default.CheckCircle, P2T.Ok, P2T.OkBg)
         else -> Triple(Icons.Default.PlayCircle, P2T.Brand, P2T.Tint)
     }
-    Row(Modifier.fillMaxWidth().background(if (t.state == "open") Color(0xFFFFFDF5) else Color.White).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().background(if (t.state == "open") P2T.WarnBg else P2T.Card).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(36.dp).clip(CircleShape).background(bg), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(20.dp), tint = tint) }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(t.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = P2T.Ink)
-            Text(t.meta, fontSize = 12.sp, color = if (t.state == "open") Color(0xFFB45309) else P2T.Muted, maxLines = 2)
+            Text(t.meta, fontSize = 12.sp, color = if (t.state == "open") P2T.WarnInk else P2T.Muted, maxLines = 2)
         }
         Spacer(Modifier.width(8.dp))
         when (t.action) {
             "Start" -> FilledTonalButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Default.PlayArrow, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("Start") }
-            "Continue" -> Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFF7E0), contentColor = Color(0xFFB45309)), contentPadding = PaddingValues(horizontal = 12.dp)) { Text("Continue") }
+            "Continue" -> Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = P2T.WarnBg, contentColor = P2T.WarnInk), contentPadding = PaddingValues(horizontal = 12.dp)) { Text("Continue") }
             "Retake" -> OutlinedButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Default.Replay, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("Retake") }
             else -> TextButton(onClick = onClick) { Icon(Icons.Default.Visibility, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("Answers") }
         }

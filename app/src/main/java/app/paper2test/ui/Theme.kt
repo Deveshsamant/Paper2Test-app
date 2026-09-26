@@ -5,7 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,24 +26,58 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.paper2test.R
 
-/** Paper2Test design tokens (same as the website's style.css, from the Stitch redesign). */
+/** Paper2Test design tokens (same as the website's style.css, from the Stitch redesign), light and dark. */
+@Immutable
+data class P2TPalette(
+    val isDark: Boolean, val brand: Color, val brand2: Color, val indigo: Color, val canvas: Color, val card: Color,
+    val tint: Color, val tint2: Color, val tint3: Color, val ink: Color, val ink2: Color, val muted: Color, val line: Color,
+    val ok: Color, val okInk: Color, val bad: Color, val warn: Color, val okBg: Color, val okLine: Color, val badBg: Color,
+    val badLine: Color, val warnBg: Color, val warnInk: Color, val slateBg: Color, val vioBg: Color, val onTint: Color,
+)
+val LightPalette = P2TPalette(
+    isDark = false, brand = Color(0xFF004AC6), brand2 = Color(0xFF2563EB), indigo = Color(0xFF4B41E1), canvas = Color(0xFFF8FAFC), card = Color.White,
+    tint = Color(0xFFEFF4FF), tint2 = Color(0xFFE5EEFF), tint3 = Color(0xFFDCE9FF), ink = Color(0xFF0F172A), ink2 = Color(0xFF434655), muted = Color(0xFF64748B), line = Color(0xFFE2E8F0),
+    ok = Color(0xFF10B981), okInk = Color(0xFF047857), bad = Color(0xFFBA1A1A), warn = Color(0xFFF59E0B), okBg = Color(0xFFECFDF5), okLine = Color(0xFFA7F3D0), badBg = Color(0xFFFEF2F2),
+    badLine = Color(0xFFFECACA), warnBg = Color(0xFFFFFBEB), warnInk = Color(0xFFB45309), slateBg = Color(0xFFF1F5F9), vioBg = Color(0xFFEEF2FF), onTint = Color(0xFF004AC6),
+)
+val DarkPalette = P2TPalette(
+    isDark = true, brand = Color(0xFF4D8DFF), brand2 = Color(0xFF3B82F6), indigo = Color(0xFF8B83FF), canvas = Color(0xFF0B1120), card = Color(0xFF111A2E),
+    tint = Color(0xFF14203A), tint2 = Color(0xFF1A2947), tint3 = Color(0xFF233458), ink = Color(0xFFE6EDF7), ink2 = Color(0xFFB9C3D6), muted = Color(0xFF8A97AE), line = Color(0xFF1E2A44),
+    ok = Color(0xFF10B981), okInk = Color(0xFF34D399), bad = Color(0xFFF87171), warn = Color(0xFFF59E0B), okBg = Color(0x1F10B981), okLine = Color(0x5910B981), badBg = Color(0x1FEF4444),
+    badLine = Color(0x59EF4444), warnBg = Color(0x1FF59E0B), warnInk = Color(0xFFFBBF24), slateBg = Color(0xFF172238), vioBg = Color(0x248B83FF), onTint = Color(0xFF9CC0FF),
+)
+val LocalP2T = staticCompositionLocalOf { LightPalette }
+
 object P2T {
-    val Brand = Color(0xFF004AC6)
-    val Brand2 = Color(0xFF2563EB)
-    val Indigo = Color(0xFF4B41E1)
-    val Canvas = Color(0xFFF8FAFC)
-    val Tint = Color(0xFFEFF4FF)
-    val Tint2 = Color(0xFFE5EEFF)
-    val Tint3 = Color(0xFFDCE9FF)
-    val Ink = Color(0xFF0F172A)
-    val Ink2 = Color(0xFF434655)
-    val Muted = Color(0xFF64748B)
-    val Line = Color(0xFFE2E8F0)
-    val Ok = Color(0xFF10B981)
-    val OkInk = Color(0xFF047857)
-    val Bad = Color(0xFFBA1A1A)
-    val Warn = Color(0xFFF59E0B)
-    val Hero = Brush.linearGradient(listOf(Color(0xFF0B3FB0), Brand2, Indigo))
+    val isDark: Boolean @Composable @ReadOnlyComposable get() = LocalP2T.current.isDark
+    val Brand: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.brand
+    val Brand2: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.brand2
+    val Indigo: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.indigo
+    val Canvas: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.canvas
+    /** Card / bar / sheet surface (white in light). */
+    val Card: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.card
+    val Tint: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.tint
+    val Tint2: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.tint2
+    val Tint3: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.tint3
+    val Ink: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.ink
+    val Ink2: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.ink2
+    val Muted: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.muted
+    val Line: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.line
+    val Ok: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.ok
+    val OkInk: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.okInk
+    val Bad: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.bad
+    val Warn: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.warn
+    val OkBg: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.okBg
+    val OkLine: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.okLine
+    val BadBg: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.badBg
+    val BadLine: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.badLine
+    val WarnBg: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.warnBg
+    val WarnInk: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.warnInk
+    val SlateBg: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.slateBg
+    val VioBg: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.vioBg
+    /** Brand text on a tint background (brighter in dark). */
+    val OnTint: Color @Composable @ReadOnlyComposable get() = LocalP2T.current.onTint
+    val Hero = Brush.linearGradient(listOf(Color(0xFF0B3FB0), Color(0xFF2563EB), Color(0xFF4B41E1)))
 }
 
 val Jakarta = FontFamily(
@@ -47,14 +86,22 @@ val Jakarta = FontFamily(
     Font(R.font.jakarta_800, FontWeight.ExtraBold),
 )
 
-private val Colors = lightColorScheme(
-    primary = P2T.Brand, onPrimary = Color.White, primaryContainer = P2T.Tint2, onPrimaryContainer = P2T.Brand,
-    secondary = P2T.Indigo, onSecondary = Color.White, secondaryContainer = Color(0xFFE2DFFF), onSecondaryContainer = Color(0xFF3323CC),
-    tertiary = P2T.OkInk, tertiaryContainer = Color(0xFFECFDF5), onTertiaryContainer = P2T.OkInk,
-    background = P2T.Canvas, onBackground = P2T.Ink, surface = P2T.Canvas, onSurface = P2T.Ink, onSurfaceVariant = P2T.Ink2,
-    surfaceVariant = P2T.Tint, surfaceContainerLowest = Color.White, surfaceContainerLow = Color.White, surfaceContainer = P2T.Tint,
-    surfaceContainerHigh = P2T.Tint2, surfaceContainerHighest = P2T.Tint3, outline = Color(0xFF737686), outlineVariant = P2T.Line,
-    error = P2T.Bad, errorContainer = Color(0xFFFFDAD6),
+private fun scheme(p: P2TPalette) = if (!p.isDark) lightColorScheme(
+    primary = p.brand, onPrimary = Color.White, primaryContainer = p.tint2, onPrimaryContainer = p.brand,
+    secondary = p.indigo, onSecondary = Color.White, secondaryContainer = Color(0xFFE2DFFF), onSecondaryContainer = Color(0xFF3323CC),
+    tertiary = p.okInk, tertiaryContainer = p.okBg, onTertiaryContainer = p.okInk,
+    background = p.canvas, onBackground = p.ink, surface = p.canvas, onSurface = p.ink, onSurfaceVariant = p.ink2,
+    surfaceVariant = p.tint, surfaceContainerLowest = Color.White, surfaceContainerLow = Color.White, surfaceContainer = p.tint,
+    surfaceContainerHigh = p.tint2, surfaceContainerHighest = p.tint3, outline = Color(0xFF737686), outlineVariant = p.line,
+    error = p.bad, errorContainer = Color(0xFFFFDAD6),
+) else darkColorScheme(
+    primary = p.brand, onPrimary = Color.White, primaryContainer = p.tint2, onPrimaryContainer = p.onTint,
+    secondary = p.indigo, onSecondary = Color.White, secondaryContainer = p.vioBg, onSecondaryContainer = Color(0xFFC7C2FF),
+    tertiary = p.okInk, tertiaryContainer = p.okBg, onTertiaryContainer = p.okInk,
+    background = p.canvas, onBackground = p.ink, surface = p.canvas, onSurface = p.ink, onSurfaceVariant = p.ink2,
+    surfaceVariant = p.tint, surfaceContainerLowest = p.card, surfaceContainerLow = p.card, surfaceContainer = p.tint,
+    surfaceContainerHigh = p.tint2, surfaceContainerHighest = p.tint3, outline = Color(0xFF5B6A88), outlineVariant = p.line,
+    error = p.bad, errorContainer = p.badBg,
 )
 
 private val Base = Typography()
@@ -71,15 +118,19 @@ private val Type = Typography(
 )
 
 @Composable
-fun P2TTheme(content: @Composable () -> Unit) =
-    MaterialTheme(colorScheme = Colors, typography = Type, shapes = Shapes(small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(18.dp)), content = content)
+fun P2TTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val p = if (dark) DarkPalette else LightPalette
+    CompositionLocalProvider(LocalP2T provides p) {
+        MaterialTheme(colorScheme = scheme(p), typography = Type, shapes = Shapes(small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(18.dp)), content = content)
+    }
+}
 
 /** White card with a hairline border and a soft shadow (the website's .card). */
 @Composable
 fun P2TCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(18.dp)
     Column(
-        modifier.fillMaxWidth().shadow(6.dp, shape, ambientColor = Color(0x140F172A), spotColor = Color(0x140F172A)).clip(shape).background(Color.White).border(1.dp, P2T.Line, shape).padding(padding),
+        modifier.fillMaxWidth().shadow(6.dp, shape, ambientColor = Color(0x140F172A), spotColor = Color(0x140F172A)).clip(shape).background(P2T.Card).border(1.dp, P2T.Line, shape).padding(padding),
         verticalArrangement = Arrangement.spacedBy(10.dp), content = content,
     )
 }

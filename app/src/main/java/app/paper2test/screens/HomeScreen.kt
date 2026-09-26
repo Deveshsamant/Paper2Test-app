@@ -115,7 +115,7 @@ fun HomeScreen(nav: Nav) {
     }
 
     Scaffold(containerColor = P2T.Canvas, topBar = {
-        TopAppBar(colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White.copy(alpha = .92f)),
+        TopAppBar(colors = TopAppBarDefaults.topAppBarColors(containerColor = P2T.Card.copy(alpha = .92f)),
             title = {
                 inst?.let { CoBrand(it) } ?: Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)))
@@ -128,7 +128,7 @@ fun HomeScreen(nav: Nav) {
                     IconButton(onClick = { menu = true }) {
                         RemoteImage(user?.optString("avatar_url")?.takeIf { it.isNotBlank() && it != "null" }, 34.dp, name, circle = true)
                     }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(16.dp), containerColor = Color.White) {
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(16.dp), containerColor = P2T.Card) {
                         if (spaces.size > 1) {
                             Text("SWITCH SPACE", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), color = P2T.Muted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             spaces.forEach { s ->
@@ -182,7 +182,7 @@ fun HomeScreen(nav: Nav) {
                         Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Event, null, tint = P2T.Brand); Spacer(Modifier.width(8.dp)); Text("Upcoming for your exams", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f)); TextButton(onClick = { nav.tab(Screen.Web("/#/exams", "Exams & dates", "exams")) }) { Text("All") } }
                         alerts.forEach { a ->
                             val urgent = a.optBoolean("urgent")
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (urgent) Color(0xFFFEF2F2) else P2T.Tint).clickable { nav.go(Screen.Web("/#/exams/${a.optString("exam_code")}", a.optString("exam_name"))) }.padding(10.dp)) {
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (urgent) P2T.BadBg else P2T.Tint).clickable { nav.go(Screen.Web("/#/exams/${a.optString("exam_code")}", a.optString("exam_name"))) }.padding(10.dp)) {
                                 Text("${a.optString("title")}: ${a.optString("text")}", color = if (urgent) P2T.Bad else P2T.Ink, fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
@@ -205,7 +205,7 @@ fun HomeScreen(nav: Nav) {
                                     when {
                                         kind == "institute" -> TextButton(onClick = { nav.tab(Screen.Web("/#/tests", "Tests", "tests")) }) { Text("Results") }
                                         mine == "done" -> TextButton(onClick = { nav.go(Screen.Web("/#/results/${t.optString("code")}", "My answers")) }) { Text("My answers") }
-                                        t.optString("status") == "ended" -> Pill("closed", Color(0xFFF1F5F9), P2T.Ink2)
+                                        t.optString("status") == "ended" -> Pill("closed", P2T.SlateBg, P2T.Ink2)
                                         else -> FilledTonalButton(onClick = { nav.go(Screen.Exam(t.optString("code"))) }) { Text(if (mine == "writing") "Continue" else "Start") }
                                     }
                                 }
@@ -245,7 +245,7 @@ fun HomeScreen(nav: Nav) {
                                 Text(a.optString("title"), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text("${a.optString("host")} · ${df.format(Date(a.optLong("started_at")))}", style = MaterialTheme.typography.bodySmall, color = P2T.Muted, maxLines = 1)
                                 Spacer(Modifier.height(6.dp))
-                                if (published) Pill(status, Color(0xFFECFDF5), P2T.OkInk) else if (!submitted) Pill(status, Color(0xFFFFFBEB), Color(0xFF92400E)) else Pill(status, Color(0xFFF1F5F9), P2T.Ink2)
+                                if (published) Pill(status, P2T.OkBg, P2T.OkInk) else if (!submitted) Pill(status, P2T.WarnBg, P2T.WarnInk) else Pill(status, P2T.SlateBg, P2T.Ink2)
                             }
                             Spacer(Modifier.width(8.dp))
                             if (submitted) FilledTonalButton(onClick = { nav.go(Screen.Web("/#/results/${a.optString("code")}", "My answers")) }, shape = RoundedCornerShape(12.dp)) { Text("Answers") }
@@ -266,7 +266,7 @@ fun HomeScreen(nav: Nav) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Pill(t.optString("code"), P2T.Tint2, P2T.Brand)
                                         val st = t.optString("status")
-                                        Pill(st, if (st == "live") Color(0xFFECFDF5) else Color(0xFFF1F5F9), if (st == "live") P2T.OkInk else P2T.Ink2)
+                                        Pill(st, if (st == "live") P2T.OkBg else P2T.SlateBg, if (st == "live") P2T.OkInk else P2T.Ink2)
                                     }
                                 }
                                 Icon(Icons.Default.ChevronRight, null, tint = P2T.Muted)

@@ -143,7 +143,7 @@ fun CodeField(code: String, onChange: (String) -> Unit, onGo: () -> Unit, onDark
                 focusedContainerColor = if (onDark) Color.White.copy(alpha = .16f) else P2T.Tint, unfocusedContainerColor = if (onDark) Color.White.copy(alpha = .16f) else P2T.Tint,
                 focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = if (onDark) Color.White else P2T.Brand))
         Button(onClick = onGo, enabled = code.length >= 4, modifier = Modifier.height(54.dp), shape = RoundedCornerShape(14.dp),
-            colors = if (onDark) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = P2T.Brand, disabledContainerColor = Color.White.copy(alpha = .35f), disabledContentColor = Color.White) else ButtonDefaults.buttonColors()) {
+            colors = if (onDark) ButtonDefaults.buttonColors(containerColor = P2T.Card, contentColor = P2T.Brand, disabledContainerColor = Color.White.copy(alpha = .35f), disabledContentColor = Color.White) else ButtonDefaults.buttonColors()) {
             Text("Join"); Spacer(Modifier.width(4.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
         }
     }

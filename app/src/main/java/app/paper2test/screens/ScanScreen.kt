@@ -229,7 +229,7 @@ fun ScanScreen(nav: Nav) {
         containerColor = P2T.Canvas,
         topBar = { TopAppBar(title = { Text("Create a test", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = P2T.Canvas)) },
         bottomBar = {
-            if (test == null) Surface(color = UiColor.White, shadowElevation = 12.dp) {
+            if (test == null) Surface(color = P2T.Card, shadowElevation = 12.dp) {
                 Column(Modifier.navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     status?.let { Text(it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (it.startsWith("Failed") || it.startsWith("Scanner")) MaterialTheme.colorScheme.error else P2T.Ink2) }
                     if (status?.contains("limit is used up") == true || status?.contains("more pages than your plan") == true) OutlinedButton(onClick = { nav.go(Screen.Plans) }, Modifier.fillMaxWidth()) { Text("See plans & paper packs") }
@@ -268,7 +268,7 @@ fun ScanScreen(nav: Nav) {
                     P2TCard(padding = 14.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             val isPdf = s is Source.Pdf
-                            Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(if (isPdf) UiColor(0xFFFEF2F2) else P2T.Tint), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(if (isPdf) P2T.BadBg else P2T.Tint), contentAlignment = Alignment.Center) {
                                 Icon(if (isPdf) Icons.Default.PictureAsPdf else Icons.Default.Image, null, tint = if (isPdf) UiColor(0xFFDC2626) else P2T.Brand)
                             }
                             Spacer(Modifier.width(12.dp))
@@ -290,15 +290,15 @@ fun ScanScreen(nav: Nav) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(duration, { duration = it.filter { c -> c.isDigit() }.take(3) }, Modifier.weight(1.1f), label = { Text("Minutes") }, singleLine = true, shape = RoundedCornerShape(12.dp))
                         OutlinedTextField(plus, { plus = it.filter { c -> c.isDigit() || c == '.' }.take(5) }, Modifier.weight(1f), label = { Text("+ correct") }, singleLine = true, shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = UiColor(0xFFF0FDF4), focusedContainerColor = UiColor(0xFFF0FDF4), unfocusedBorderColor = UiColor(0xFFA7F3D0)))
+                            colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = P2T.OkBg, focusedContainerColor = P2T.OkBg, unfocusedBorderColor = P2T.OkLine))
                         OutlinedTextField(minus, { minus = it.filter { c -> c.isDigit() || c == '.' }.take(5) }, Modifier.weight(1f), label = { Text("− wrong") }, singleLine = true, shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = UiColor(0xFFFEF2F2), focusedContainerColor = UiColor(0xFFFEF2F2), unfocusedBorderColor = UiColor(0xFFFECACA)))
+                            colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = P2T.BadBg, focusedContainerColor = P2T.BadBg, unfocusedBorderColor = P2T.BadLine))
                     }
                 }
                 // Optional instructions the AI follows while reading ("only questions 1-50", "skip the Hindi part").
                 P2TCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(UiColor(0xFFEEF2FF)), contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp), tint = P2T.Indigo) }
+                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(P2T.VioBg), contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp), tint = P2T.Indigo) }
                         Spacer(Modifier.width(10.dp))
                         Text("Instructions for the AI", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                         Pill("Optional", bg = P2T.Tint, fg = P2T.Muted)
@@ -330,7 +330,7 @@ private fun StepHeader(n: Int, text: String) {
 @Composable
 private fun SourceTile(icon: ImageVector, label: String, sub: String, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
-    Column(modifier.clip(shape).background(if (selected) P2T.Tint else UiColor.White).border(if (selected) 2.dp else 1.dp, if (selected) P2T.Brand else P2T.Line, shape)
+    Column(modifier.clip(shape).background(if (selected) P2T.Tint else P2T.Card).border(if (selected) 2.dp else 1.dp, if (selected) P2T.Brand else P2T.Line, shape)
         .clickable(enabled = enabled, onClick = onClick).padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) P2T.Tint3 else P2T.Tint), contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (selected) P2T.Brand else P2T.Ink2) }
         Text(label, fontFamily = Jakarta, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (selected) P2T.Brand else P2T.Ink)
