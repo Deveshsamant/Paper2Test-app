@@ -34,6 +34,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="paper2test.app" android:pathPrefix="/i/" />
             </intent-filter>
+            <!-- Friends' invite links: https://paper2test.app/r/CODE -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="paper2test.app" android:pathPrefix="/r/" />
+            </intent-filter>
         </activity>
         <!-- Push notifications (Firebase Cloud Messaging) -->
         <service android:name=".PushService" android:exported="false">

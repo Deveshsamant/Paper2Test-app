@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.light(android.graphics.Color.WHITE, android.graphics.Color.WHITE))
         pendingCode.value = codeFromIntent(intent)
         instituteFromIntent(intent)
+        referralFromIntent(intent)
         Institutes.readInstallReferrer(this)
         pendingUrl.value = intent?.getStringExtra("url")
         appUpdates = AppUpdateManagerFactory.create(this)
@@ -154,10 +155,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         codeFromIntent(intent)?.let { pendingCode.value = it }
         instituteFromIntent(intent)
+        referralFromIntent(intent)
         intent.getStringExtra("url")?.let { pendingUrl.value = it }
     }
 
     /** paper2test.app/i/<slug>: remember the institute; Home joins it once the person is signed in. */
+    /** paper2test.app/r/<code>: a friend's invite; claimed once the person is signed in (Home). */
+    private fun referralFromIntent(i: Intent?) {
+        i?.data?.path?.let { Regex("^/r/([A-Za-z0-9]{5,10})").find(it)?.groupValues?.get(1) }?.let { App.of(this).session.refCode = it.uppercase(); homeRefresh.intValue++ }
+    }
+
     private fun instituteFromIntent(i: Intent?) {
         i?.data?.path?.let { Regex("^/i/([A-Za-z0-9-]{3,40})").find(it)?.groupValues?.get(1) }?.let { App.of(this).session.refInstitute = it.lowercase(); homeRefresh.intValue++ }
     }

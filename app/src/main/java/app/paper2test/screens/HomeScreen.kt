@@ -61,6 +61,7 @@ fun HomeScreen(nav: Nav) {
     fun load() = scope.launch {
         try {
             // Came through an institute's link before signing in: join it now, then read the profile.
+            Institutes.claimReferral(app)
             Institutes.joinPending(app)
             // Spaces (personal / my institute / institute I study at): a phone without a valid choice opens the default.
             runCatching { app.api.get("/me/spaces") }.getOrNull()?.let { r ->
@@ -143,6 +144,7 @@ fun HomeScreen(nav: Nav) {
                             HorizontalDivider(Modifier.padding(vertical = 4.dp))
                         }
                         DropdownMenuItem(text = { Text("Profile & settings") }, leadingIcon = { Icon(Icons.Default.Person, null) }, onClick = { menu = false; nav.go(Screen.Web("/#/settings", "Profile & settings")) })
+                        DropdownMenuItem(text = { Text("Invite friends, get free tests") }, leadingIcon = { Icon(Icons.Default.Redeem, null) }, onClick = { menu = false; nav.go(Screen.Web("/#/invite", "Invite friends")) })
                         if (kind == "institute") DropdownMenuItem(text = { Text(if (current?.optString("role") == "Owner") "Batches & teachers" else "My batches") }, leadingIcon = { Icon(Icons.Default.Groups, null) }, onClick = { menu = false; nav.go(Screen.Web("/#/batches", "Batches")) })
                         DropdownMenuItem(text = { Text("Sign out") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null) }, onClick = { menu = false; scope.launch { Push.unregister(ctx); app.session.clear(); nav.replace(Screen.Login) } })
                     }

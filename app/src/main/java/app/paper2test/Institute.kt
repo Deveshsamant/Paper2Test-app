@@ -41,6 +41,7 @@ object Institutes {
                     if (code == InstallReferrerClient.InstallReferrerResponse.OK) {
                         val ref = runCatching { client.installReferrer.installReferrer }.getOrNull().orEmpty()
                         Regex("(?:^|&)(?:institute|utm_content)=([a-z0-9-]{3,40})", RegexOption.IGNORE_CASE).find(ref)?.groupValues?.get(1)?.let { app.session.refInstitute = it.lowercase() }
+                        Regex("(?:^|&)ref=([A-Za-z0-9]{5,10})").find(ref)?.groupValues?.get(1)?.let { app.session.refCode = it.uppercase() }
                     }
                     if (code != InstallReferrerClient.InstallReferrerResponse.SERVICE_UNAVAILABLE) app.session.referrerChecked = true
                     runCatching { client.endConnection() }
@@ -48,6 +49,13 @@ object Institutes {
                 override fun onInstallReferrerServiceDisconnected() {}
             })
         }
+    }
+
+    /** Signed in after opening a friend's invite link: tell the server who invited (new accounts only; once). */
+    suspend fun claimReferral(app: App) {
+        val code = app.session.refCode ?: return
+        app.session.refCode = null
+        runCatching { app.api.post("/referral/claim", JSONObject().put("code", code)) }
     }
 
     /** Signed in with a remembered institute link: join it (once). Returns true when something changed. */

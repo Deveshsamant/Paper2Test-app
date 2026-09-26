@@ -41,6 +41,10 @@ class Session(ctx: Context) {
     var pushToken: String?
         get() = prefs.getString("push_token", null)
         set(v) { prefs.edit().putString("push_token", v).apply() }
+    /** A friend's invite code (paper2test.app/r/<code>, or the Play install link): claimed after sign-in. */
+    var refCode: String?
+        get() = prefs.getString("ref_code", null)
+        set(v) { prefs.edit().apply { if (v == null) remove("ref_code") else putString("ref_code", v) }.apply() }
     /** Institute link (paper2test.app/i/<slug>) opened before signing in: joined after sign-in. */
     var refInstitute: String?
         get() = prefs.getString("ref_institute", null)
