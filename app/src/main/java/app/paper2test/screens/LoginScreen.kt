@@ -92,56 +92,63 @@ fun LoginScreen(nav: Nav) {
     var emailOn by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { emailOn = runCatching { app.api.get("/config").optBoolean("email_login") }.getOrDefault(false) }
 
-    // The owner's sign-in design (same as the website): always light, the soft background, a curved glowing banner
-    // with the 3D page, then the welcome card. Dark status-bar icons here whatever the app theme; restored on leaving.
+    // The owner's sign-in design (same as the website on phones): the full picture (logo, headline, features, 3D page)
+    // as the background, the welcome card in its light part. Always light. The picture's top is dark, so light
+    // status-bar icons here; restored on leaving.
     val activity = ctx as? android.app.Activity
     val appDark = P2T.isDark
     DisposableEffect(Unit) {
         val win = activity?.window
         val ctl = win?.let { androidx.core.view.WindowCompat.getInsetsController(it, it.decorView) }
-        ctl?.isAppearanceLightStatusBars = true; ctl?.isAppearanceLightNavigationBars = true
+        ctl?.isAppearanceLightStatusBars = false; ctl?.isAppearanceLightNavigationBars = true
         onDispose { ctl?.isAppearanceLightStatusBars = !appDark; ctl?.isAppearanceLightNavigationBars = !appDark }
     }
+    var showCode by remember { mutableStateOf(false) }
     P2TTheme(dark = false) {
-    Box(Modifier.fillMaxSize().background(Color(0xFFF3F6FF))) {
-        Image(painterResource(R.drawable.bg_welcome), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-            LoginBanner()
-            Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-18).dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFFB7D4FE))) {
+        // The picture is 1:2. Fit the width, or the height on taller screens (a little is trimmed at the sides).
+        val imgW = if (maxWidth > maxHeight / 2) maxWidth else maxHeight / 2
+        val imgH = imgW * 2
+        val side = maxWidth * 0.1f
+        Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Image(painterResource(R.drawable.mobile_onboarding_bg), null, Modifier.align(Alignment.TopCenter).requiredWidth(imgW).height(imgH), contentScale = ContentScale.FillBounds)
+            Column(Modifier.fillMaxWidth().padding(top = imgH * 0.635f, start = side, end = side, bottom = 24.dp).navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 P2TCard(padding = 22.dp) {
-                    Text("Welcome back", fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.8).sp, color = Color(0xFF0F172A))
-                    Text("Sign in to host tests, keep your scores in one place and use test bundles.", color = Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium)
+                    Text("Welcome back", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.8).sp, color = Color(0xFF0F172A))
+                    Text("Sign in to host tests, keep your scores in one place and use test bundles.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(2.dp))
                     OutlinedButton(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = Color(0xFF0F172A)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))) {
-                        Image(painterResource(R.drawable.ic_google), null, Modifier.size(20.dp))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)), contentPadding = PaddingValues(horizontal = 16.dp)) {
+                        Image(painterResource(R.drawable.ic_google), null, Modifier.size(22.dp)); Spacer(Modifier.width(10.dp))
                         Text(if (busy) "Signing in…" else "Continue with Google", Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = Color(0xFF64748B))
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = Color(0xFF0F172A))
                     }
                     // Email + password (sign up with a code by email, forgot password): the website's sign-in page, which
                     // hands the session back to the app (P2TApp.signedIn).
                     if (emailOn) OutlinedButton(onClick = { nav.go(Screen.Web("/#/login", "Sign in with email")) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
                         Icon(Icons.Default.Email, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Use email and password", fontWeight = FontWeight.SemiBold)
                     }
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                    Text("By continuing you agree to the Terms and Privacy Policy at paper2test.app.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                    error?.let { Text(it, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    Text("By continuing you agree to the Terms and Privacy Policy.", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
                 }
-                DividerLabel("Have a test code? No account needed")
-                P2TCard(padding = 18.dp) {
+                // Students join a test with a code, no account needed: tucked under the card.
+                TextButton(onClick = { showCode = !showCode }, modifier = Modifier.padding(top = 8.dp)) {
+                    Icon(Icons.Default.Pin, null, Modifier.size(18.dp), tint = Color(0xFF1D4ED8)); Spacer(Modifier.width(6.dp))
+                    Text(if (showCode) "Hide" else "Have a test code?", color = Color(0xFF1D4ED8), fontWeight = FontWeight.SemiBold)
+                }
+                if (showCode) P2TCard(padding = 18.dp) {
                     CodeField(code, { code = it }, onGo = { nav.go(Screen.Exam(code)) })
                     OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                         Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code")
                     }
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
     }
     }
 }
 
-/** The 6-letter test code box with a Join button (login + home). */
 @Composable
 fun CodeField(code: String, onChange: (String) -> Unit, onGo: () -> Unit, onDark: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -157,44 +164,5 @@ fun CodeField(code: String, onChange: (String) -> Unit, onGo: () -> Unit, onDark
             colors = if (onDark) ButtonDefaults.buttonColors(containerColor = P2T.Card, contentColor = P2T.Brand, disabledContainerColor = Color.White.copy(alpha = .35f), disabledContentColor = Color.White) else ButtonDefaults.buttonColors()) {
             Text("Join"); Spacer(Modifier.width(4.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
         }
-    }
-}
-
-/** Curved banner: the 3D page from the owner's artwork, a glowing edge along the curve, the logo and the headline. */
-@Composable
-private fun LoginBanner() {
-    val curve = GenericShape { size, _ ->
-        moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width, size.height * 0.86f)
-        quadraticTo(size.width / 2f, size.height * 1.12f, 0f, size.height * 0.86f); close()
-    }
-    Box(Modifier.fillMaxWidth().height(360.dp)) {
-        // Glow line: the gradient shows in the 3 dp between this curve and the picture's curve.
-        Box(Modifier.fillMaxSize().clip(curve).background(Brush.horizontalGradient(listOf(Color(0xFF7DD3FC), Color(0xFF3B82F6), Color(0xFF8B5CF6)))))
-        Box(Modifier.fillMaxSize().padding(bottom = 3.dp).clip(curve).background(Color(0xFF050B24))) {
-            Image(painterResource(R.drawable.onboarding_art), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.1f))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.38f to Color.Transparent, 0.9f to Color(0xE6050B24))))
-            Column(Modifier.align(Alignment.BottomStart).padding(start = 22.dp, end = 22.dp, bottom = 40.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)))
-                    Spacer(Modifier.width(8.dp))
-                    Text(buildAnnotatedString { append("Paper2"); withStyle(SpanStyle(color = Color(0xFF38BDF8))) { append("Test") } }, color = Color.White, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(buildAnnotatedString {
-                    append("Question papers to ")
-                    withStyle(SpanStyle(brush = Brush.horizontalGradient(listOf(Color(0xFF22D3EE), Color(0xFF3B82F6))))) { append("mock tests") }
-                }, color = Color.White, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 33.sp, letterSpacing = (-0.8).sp)
-            }
-        }
-    }
-}
-
-/** "—— label ——" between the sign-in card and the test-code card. */
-@Composable
-private fun DividerLabel(text: String) {
-    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        HorizontalDivider(Modifier.weight(1f), color = Color(0x40647488))
-        Text(text, Modifier.padding(horizontal = 12.dp), color = Color(0xFF64748B), style = MaterialTheme.typography.bodySmall)
-        HorizontalDivider(Modifier.weight(1f), color = Color(0x40647488))
     }
 }
