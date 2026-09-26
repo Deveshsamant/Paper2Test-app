@@ -77,7 +77,7 @@ fun LoginScreen(nav: Nav) {
                 nav.replace(Screen.Home)
             } catch (e: GetCredentialException) {
                 error = when {
-                    e is NoCredentialException -> "No Google account available on this device. Add one in Settings > Accounts, or join with a test code below."
+                    e is NoCredentialException -> "No Google account available on this device. Add one in your phone's Settings > Accounts and try again."
                     e.message?.contains("10") == true || e.message?.contains("Developer console", true) == true -> "Google sign-in is not configured for this build (Android OAuth client / SHA-1)."
                     e.message?.contains("cancel", true) == true -> "Sign-in cancelled."
                     else -> "Sign-in unavailable: ${e.message}"
