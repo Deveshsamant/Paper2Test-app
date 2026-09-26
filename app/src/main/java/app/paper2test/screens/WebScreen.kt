@@ -32,11 +32,12 @@ import app.paper2test.*
 @SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
+fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false, tab: String? = null) {
     val ctx = LocalContext.current
     val app = App.of(ctx)
     var web by remember { mutableStateOf<WebView?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var canBack by remember { mutableStateOf(false) } // moved on inside the page (e.g. Store -> a bundle)
     // <input type="file"> in the page (e.g. importing students from Excel): Android's file picker.
     var fileCb by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -61,9 +62,13 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
         }
     }
 
+    // One back button: this arrow (the website hides its own "← Back" links in the app). It goes back inside the
+    // page first, like the phone's Back. A tab's first page has no arrow: the bottom bar is the way around.
     Scaffold(topBar = {
-        if (!exam) TopAppBar(title = { Text(title) }, navigationIcon = { IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } })
-    }) { pad ->
+        if (!exam) TopAppBar(title = { Text(title) }, navigationIcon = {
+            if (tab == null || canBack) IconButton(onClick = { if (web?.canGoBack() == true) web?.goBack() else nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+        })
+    }, bottomBar = { if (tab != null && !exam) TabBar(nav, tab) }) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             AndroidView(factory = { c ->
                 WebView(c).apply {
@@ -84,6 +89,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                         /** A page that is finished (e.g. the welcome steps) returns to the app's previous screen. */
                         @JavascriptInterface
                         fun close() { post { nav.back() } }
+                        /** Email sign-in / sign-up finished on the website's page: the app keeps the session and opens Home. */
+                        @JavascriptInterface
+                        fun signedIn(token: String) { if (token.length in 20..2000) post { app.session.token = token; nav.replace(Screen.Home) } }
                         /** The site's Pricing page inside the app: the native Plans screen (Google Play Billing). */
                         @JavascriptInterface
                         fun openPlans() { post { nav.go(Screen.Plans) } }
@@ -140,7 +148,8 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false) {
                             runCatching { c.startActivity(Intent(Intent.ACTION_VIEW, u)) }
                             return true
                         }
-                        override fun onPageFinished(view: WebView, url: String) { loading = false }
+                        override fun onPageFinished(view: WebView, url: String) { loading = false; canBack = view.canGoBack() }
+                        override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) { canBack = view.canGoBack() }
                     }
                     loadUrl(url)
                     web = this

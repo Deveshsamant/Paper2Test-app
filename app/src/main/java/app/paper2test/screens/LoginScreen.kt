@@ -80,6 +80,10 @@ fun LoginScreen(nav: Nav) {
         }
     }
 
+    // Email sign-in appears once the server can send emails (/api/config email_login).
+    var emailOn by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { emailOn = runCatching { app.api.get("/config").optBoolean("email_login") }.getOrDefault(false) }
+
     Box(Modifier.fillMaxSize().background(P2T.Canvas).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.widthIn(max = 520.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -102,6 +106,11 @@ fun LoginScreen(nav: Nav) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Bolt, null, Modifier.size(16.dp), tint = P2T.OkInk); Spacer(Modifier.width(4.dp))
                     Text("One tap, no password", style = MaterialTheme.typography.bodySmall, color = P2T.Ink2)
+                }
+                // Email + password (sign up with a code by email, forgot password): the website's sign-in page, which
+                // hands the session back to the app (P2TApp.signedIn).
+                if (emailOn) OutlinedButton(onClick = { nav.go(Screen.Web("/#/login", "Sign in with email")) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Default.Email, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Use email and password", fontWeight = FontWeight.SemiBold)
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }

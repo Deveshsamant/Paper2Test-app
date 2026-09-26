@@ -37,8 +37,10 @@ sealed class Screen {
     data object Scan : Screen()
     data object Bundles : Screen()
     data object Plans : Screen()
+    data object PlansTab : Screen() // Plans opened from the bottom bar
     data class Exam(val code: String) : Screen()
-    data class Web(val path: String, val title: String) : Screen()
+    /** [tab] set: one of the bottom tabs (bottom bar shown, no back arrow at its first page). */
+    data class Web(val path: String, val title: String, val tab: String? = null) : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -74,6 +76,8 @@ class MainActivity : ComponentActivity() {
                 override fun go(s: Screen) { stack = stack + s }
                 override fun replace(s: Screen) { stack = listOf(s) }
                 override fun back(): Boolean { if (stack.size <= 1) return false; stack = stack.dropLast(1); return true }
+                // Tabs do not pile up: Home, or Home + the tab (so Back from any tab returns Home).
+                override fun tab(s: Screen) { stack = if (s == Screen.Home) listOf(Screen.Home) else listOf(Screen.Home, s) }
             } }
             // A shared link (or QR opened by the camera app) lands straight in the exam room.
             LaunchedEffect(pendingCode.value) { pendingCode.value?.let { nav.go(Screen.Exam(it)); pendingCode.value = null } }
@@ -97,8 +101,10 @@ class MainActivity : ComponentActivity() {
                             Screen.Scan -> ScanScreen(nav)
                             Screen.Bundles -> BundlesScreen(nav)
                             Screen.Plans -> PlansScreen(nav)
-                            is Screen.Exam -> WebScreen(nav, "/t/${s.code}", "Test ${s.code}", exam = true)
-                            is Screen.Web -> WebScreen(nav, s.path, s.title)
+                            Screen.PlansTab -> PlansScreen(nav, tab = true)
+                            is Screen.Exam -> key(s) { WebScreen(nav, "/t/${s.code}", "Test ${s.code}", exam = true) }
+                            // A new page gets its own WebView (the view is created once per composition slot).
+                            is Screen.Web -> key(s) { WebScreen(nav, s.path, s.title, tab = s.tab) }
                         }
                         // Never interrupt a test in progress; everywhere else show what the update check found.
                         val u = update.value
@@ -159,4 +165,4 @@ class MainActivity : ComponentActivity() {
     private fun codeFromIntent(i: Intent?): String? = i?.data?.path?.let { Regex("^/t/([A-Za-z0-9]{4,10})").find(it)?.groupValues?.get(1)?.uppercase() }
 }
 
-interface Nav { fun go(s: Screen); fun replace(s: Screen); fun back(): Boolean }
+interface Nav { fun go(s: Screen); fun replace(s: Screen); fun back(): Boolean; fun tab(s: Screen) }

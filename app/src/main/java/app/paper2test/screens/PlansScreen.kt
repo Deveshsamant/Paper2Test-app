@@ -52,7 +52,7 @@ private val PLAN_META = mapOf(
 /** Plans & paper packs, bought through Google Play (prices come from Google Play, set on the admin panel). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlansScreen(nav: Nav) {
+fun PlansScreen(nav: Nav, tab: Boolean = false) {
     val ctx = LocalContext.current
     val app = App.of(ctx)
     val scope = rememberCoroutineScope()
@@ -97,9 +97,9 @@ fun PlansScreen(nav: Nav) {
     }
 
     Scaffold(containerColor = P2T.Canvas, topBar = {
-        TopAppBar(title = { Text("Plans & packs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+        TopAppBar(title = { Text("Plans & packs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { if (!tab) IconButton(onClick = { nav.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = P2T.Canvas))
-    }) { pad ->
+    }, bottomBar = { if (tab) TabBar(nav, "plans") }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             // Header
             item {

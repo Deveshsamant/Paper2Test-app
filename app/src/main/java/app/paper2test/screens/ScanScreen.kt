@@ -1,5 +1,9 @@
 package app.paper2test.screens
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CoroutineScope
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -117,6 +121,17 @@ private suspend fun importPdf(ctx: Context, uri: Uri): Source.Pdf = withContext(
 }
 
 /** Camera scan, gallery photos or a PDF -> pages uploaded to the background pipeline -> share code. */
+/** The upload in progress, kept outside the screen: going back or minimising the app does not stop it, and the
+ *  screen shows its progress again when reopened. */
+object UploadJob {
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    var status by mutableStateOf<String?>(null)
+    var progress by mutableStateOf(0f)
+    var busy by mutableStateOf(false)
+    var result by mutableStateOf<JSONObject?>(null)
+    var paperId by mutableStateOf<String?>(null)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(nav: Nav) {
@@ -130,11 +145,11 @@ fun ScanScreen(nav: Nav) {
     var minus by remember { mutableStateOf("0.25") }
     var source by remember { mutableStateOf<Source?>(null) }
     var picked by remember { mutableStateOf<String?>(null) } // "scan" | "photos" | "pdf" - highlights the tile
-    var status by remember { mutableStateOf<String?>(null) }
-    var progress by remember { mutableStateOf(0f) }
-    var busy by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<JSONObject?>(null) }
-    var paperId by remember { mutableStateOf<String?>(null) }
+    var status by UploadJob::status
+    var progress by UploadJob::progress
+    var busy by UploadJob::busy
+    var result by UploadJob::result
+    var paperId by UploadJob::paperId
 
     val scanner = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { res ->
         if (res.resultCode == Activity.RESULT_OK) {
@@ -164,26 +179,32 @@ fun ScanScreen(nav: Nav) {
     }
     fun upload() {
         val src = source ?: return
-        busy = true; status = "Creating paper…"; progress = 0f
-        scope.launch {
+        val ctx = ctx.applicationContext // the upload outlives this screen
+        busy = true; status = "Creating paper…"; progress = 0f; result = null
+        UploadJob.scope.launch {
             try {
                 val defaultTitle = (src as? Source.Pdf)?.name?.removeSuffix(".pdf") ?: "Scanned paper"
                 val paper = app.api.post("/papers", JSONObject().put("title", title.ifBlank { defaultTitle }).put("page_count", src.pageCount)).getJSONObject("paper")
                 val id = paper.getString("id"); paperId = id
                 // Typed PDF pages go up as text (read free); the picture rides along in case the text parser gives up.
                 val texts = if (src is Source.Pdf) { status = "Reading the PDF…"; withContext(Dispatchers.IO) { pdfTexts(ctx, src.file, src.pageCount) } } else emptyList()
+                val done = java.util.concurrent.atomic.AtomicInteger(0)
+                status = "Uploading… 0 of ${src.pageCount} pages"
                 suspend fun send(i: Int, jpeg: ByteArray) {
-                    status = "Uploading page ${i + 1} of ${src.pageCount}…"
                     val text = texts.getOrNull(i)
                     app.api.post("/papers/$id/pages/${i + 1}/upload", JSONObject().put("kind", if (text != null) "text" else "image").apply { if (text != null) put("text", text) }
                         .put("mime", "image/jpeg").put("data_b64", Base64.encodeToString(jpeg, Base64.NO_WRAP)))
-                    progress = (i + 1f) / src.pageCount
+                    val n = done.incrementAndGet()
+                    status = "Uploading… $n of ${src.pageCount} pages"; progress = n.toFloat() / src.pageCount
                 }
-                when (src) {
-                    is Source.Images -> src.uris.forEachIndexed { i, uri -> send(i, encodeImage(ctx, uri)) }
-                    is Source.Pdf -> withContext(Dispatchers.IO) {
-                        ParcelFileDescriptor.open(src.file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
-                            PdfRenderer(pfd).use { r -> for (i in 0 until r.pageCount) { val jpeg = r.openPage(i).use { renderPdfPage(it) }; send(i, jpeg) } }
+                // Pages are prepared one by one (PdfRenderer is single-threaded) and sent 3 at a time.
+                withContext(Dispatchers.IO) {
+                    val slots = kotlinx.coroutines.sync.Semaphore(3)
+                    suspend fun queue(i: Int, jpeg: ByteArray) { slots.acquire(); launch { try { send(i, jpeg) } finally { slots.release() } } }
+                    when (src) {
+                        is Source.Images -> src.uris.forEachIndexed { i, uri -> queue(i, encodeImage(ctx, uri)) }
+                        is Source.Pdf -> ParcelFileDescriptor.open(src.file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
+                            PdfRenderer(pfd).use { r -> for (i in 0 until r.pageCount) { val jpeg = r.openPage(i).use { renderPdfPage(it) }; queue(i, jpeg) } }
                         }
                     }
                 }
