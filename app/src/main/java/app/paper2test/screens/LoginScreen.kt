@@ -1,6 +1,14 @@
 package app.paper2test.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -84,49 +92,52 @@ fun LoginScreen(nav: Nav) {
     var emailOn by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { emailOn = runCatching { app.api.get("/config").optBoolean("email_login") }.getOrDefault(false) }
 
-    Box(Modifier.fillMaxSize().background(P2T.Canvas).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
-        Column(Modifier.widthIn(max = 520.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.logo), null, Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)))
-                Spacer(Modifier.width(10.dp))
-                Text("Paper2Test", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+    // The owner's sign-in design (same as the website): always light, the soft background, a curved glowing banner
+    // with the 3D page, then the welcome card. Dark status-bar icons here whatever the app theme; restored on leaving.
+    val activity = ctx as? android.app.Activity
+    val appDark = P2T.isDark
+    DisposableEffect(Unit) {
+        val win = activity?.window
+        val ctl = win?.let { androidx.core.view.WindowCompat.getInsetsController(it, it.decorView) }
+        ctl?.isAppearanceLightStatusBars = true; ctl?.isAppearanceLightNavigationBars = true
+        onDispose { ctl?.isAppearanceLightStatusBars = !appDark; ctl?.isAppearanceLightNavigationBars = !appDark }
+    }
+    P2TTheme(dark = false) {
+    Box(Modifier.fillMaxSize().background(Color(0xFFF3F6FF))) {
+        Image(painterResource(R.drawable.bg_welcome), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            LoginBanner()
+            Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-18).dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                P2TCard(padding = 22.dp) {
+                    Text("Welcome back", fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.8).sp, color = Color(0xFF0F172A))
+                    Text("Sign in to host tests, keep your scores in one place and use test bundles.", color = Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(2.dp))
+                    OutlinedButton(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = Color(0xFF0F172A)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+                        Image(painterResource(R.drawable.ic_google), null, Modifier.size(20.dp))
+                        Text(if (busy) "Signing in…" else "Continue with Google", Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = Color(0xFF64748B))
+                    }
+                    // Email + password (sign up with a code by email, forgot password): the website's sign-in page, which
+                    // hands the session back to the app (P2TApp.signedIn).
+                    if (emailOn) OutlinedButton(onClick = { nav.go(Screen.Web("/#/login", "Sign in with email")) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Default.Email, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Use email and password", fontWeight = FontWeight.SemiBold)
+                    }
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    Text("By continuing you agree to the Terms and Privacy Policy at paper2test.app.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                }
+                DividerLabel("Have a test code? No account needed")
+                P2TCard(padding = 18.dp) {
+                    CodeField(code, { code = it }, onGo = { nav.go(Screen.Exam(code)) })
+                    OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code")
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
             }
-            GradientCard {
-                Eyebrow("Question paper → mock test", Color.White.copy(alpha = .85f))
-                Text("Scan it. Share it.\nScore it.", color = Color.White, style = MaterialTheme.typography.headlineLarge)
-                Text("Turn any question paper into a timed online test. Share a code; see every score and every marked answer.", color = Color.White.copy(alpha = .88f), style = MaterialTheme.typography.bodyMedium)
-            }
-            P2TCard(padding = 20.dp) {
-                Text("Welcome to Paper2Test", style = MaterialTheme.typography.titleLarge)
-                Text("Sign in to host tests, keep your scores in one place and use test bundles.", color = P2T.Ink2, style = MaterialTheme.typography.bodyMedium)
-                Button(onClick = { signIn() }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
-                    Text(if (busy) "Signing in…" else "Continue with Google", fontWeight = FontWeight.SemiBold)
-                    if (!busy) { Spacer(Modifier.width(8.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp)) }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Bolt, null, Modifier.size(16.dp), tint = P2T.OkInk); Spacer(Modifier.width(4.dp))
-                    Text("One tap, no password", style = MaterialTheme.typography.bodySmall, color = P2T.Ink2)
-                }
-                // Email + password (sign up with a code by email, forgot password): the website's sign-in page, which
-                // hands the session back to the app (P2TApp.signedIn).
-                if (emailOn) OutlinedButton(onClick = { nav.go(Screen.Web("/#/login", "Sign in with email")) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
-                    Icon(Icons.Default.Email, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Use email and password", fontWeight = FontWeight.SemiBold)
-                }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            }
-            P2TCard(padding = 20.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(P2T.Tint2), contentAlignment = Alignment.Center) { Icon(Icons.Default.Pin, null, tint = P2T.Brand) }
-                    Spacer(Modifier.width(12.dp))
-                    Column { Text("Have a test code?", style = MaterialTheme.typography.titleMedium); Text("Join without an account", style = MaterialTheme.typography.bodySmall, color = P2T.Muted) }
-                }
-                CodeField(code, { code = it }, onGo = { nav.go(Screen.Exam(code)) })
-                OutlinedButton(onClick = { scope.launch { scanTestCode(ctx)?.let { nav.go(Screen.Exam(it)) } } }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                    Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code")
-                }
-            }
-            Text("By continuing you agree to the Terms and Privacy Policy at paper2test.app.", style = MaterialTheme.typography.bodySmall, color = P2T.Muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         }
+    }
     }
 }
 
@@ -146,5 +157,44 @@ fun CodeField(code: String, onChange: (String) -> Unit, onGo: () -> Unit, onDark
             colors = if (onDark) ButtonDefaults.buttonColors(containerColor = P2T.Card, contentColor = P2T.Brand, disabledContainerColor = Color.White.copy(alpha = .35f), disabledContentColor = Color.White) else ButtonDefaults.buttonColors()) {
             Text("Join"); Spacer(Modifier.width(4.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
         }
+    }
+}
+
+/** Curved banner: the 3D page from the owner's artwork, a glowing edge along the curve, the logo and the headline. */
+@Composable
+private fun LoginBanner() {
+    val curve = GenericShape { size, _ ->
+        moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width, size.height * 0.86f)
+        quadraticTo(size.width / 2f, size.height * 1.12f, 0f, size.height * 0.86f); close()
+    }
+    Box(Modifier.fillMaxWidth().height(360.dp)) {
+        // Glow line: the gradient shows in the 3 dp between this curve and the picture's curve.
+        Box(Modifier.fillMaxSize().clip(curve).background(Brush.horizontalGradient(listOf(Color(0xFF7DD3FC), Color(0xFF3B82F6), Color(0xFF8B5CF6)))))
+        Box(Modifier.fillMaxSize().padding(bottom = 3.dp).clip(curve).background(Color(0xFF050B24))) {
+            Image(painterResource(R.drawable.onboarding_art), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.1f))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.38f to Color.Transparent, 0.9f to Color(0xE6050B24))))
+            Column(Modifier.align(Alignment.BottomStart).padding(start = 22.dp, end = 22.dp, bottom = 40.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)))
+                    Spacer(Modifier.width(8.dp))
+                    Text(buildAnnotatedString { append("Paper2"); withStyle(SpanStyle(color = Color(0xFF38BDF8))) { append("Test") } }, color = Color.White, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(buildAnnotatedString {
+                    append("Question papers to ")
+                    withStyle(SpanStyle(brush = Brush.horizontalGradient(listOf(Color(0xFF22D3EE), Color(0xFF3B82F6))))) { append("mock tests") }
+                }, color = Color.White, fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 33.sp, letterSpacing = (-0.8).sp)
+            }
+        }
+    }
+}
+
+/** "—— label ——" between the sign-in card and the test-code card. */
+@Composable
+private fun DividerLabel(text: String) {
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        HorizontalDivider(Modifier.weight(1f), color = Color(0x40647488))
+        Text(text, Modifier.padding(horizontal = 12.dp), color = Color(0xFF64748B), style = MaterialTheme.typography.bodySmall)
+        HorizontalDivider(Modifier.weight(1f), color = Color(0x40647488))
     }
 }
