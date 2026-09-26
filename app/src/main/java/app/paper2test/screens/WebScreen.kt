@@ -99,6 +99,9 @@ fun WebScreen(nav: Nav, path: String, title: String, exam: Boolean = false, tab:
                         /** Email sign-in / sign-up finished on the website's page: the app keeps the session and opens Home. */
                         @JavascriptInterface
                         fun signedIn(token: String) { if (token.length in 20..2000) post { app.session.token = token; nav.replace(Screen.Home) } }
+                        /** The account was deleted on the website's Settings page: forget the session and show sign-in. */
+                        @JavascriptInterface
+                        fun signedOut() { post { app.session.clear(); nav.replace(Screen.Login) } }
                         /** Theme picked in the website's Settings inside the app: system / light / dark for the whole app. */
                         @JavascriptInterface
                         fun setTheme(mode: String) { if (mode in listOf("system", "light", "dark")) post { app.session.theme = mode; app.themeMode.value = mode } }

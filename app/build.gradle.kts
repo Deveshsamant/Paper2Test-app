@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,6 +8,9 @@ plugins {
 // Push notifications need the Firebase project file (app/google-services.json, from the Firebase console).
 // Without it the app still builds; notifications simply stay off.
 if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google-services")
+
+// Release signing: the upload key for Google Play, from the gitignored keystore.properties (see Play_Console_Guide).
+val keystoreProps = Properties().apply { rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
 
 android {
     namespace = "app.paper2test"
@@ -21,8 +26,19 @@ android {
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"551296682410-7tjhbhomppk9q8j2lacfv47o8cr4lq5d.apps.googleusercontent.com\"")
         buildConfigField("String", "SITE", "\"https://paper2test.app\"")
     }
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) create("release") {
+            storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+            storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias")
+            keyPassword = keystoreProps.getProperty("keyPassword")
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") }
+        release {
+            isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystoreProps.isNotEmpty()) signingConfig = signingConfigs.getByName("release")
+        }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
